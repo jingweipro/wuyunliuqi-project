@@ -156,8 +156,8 @@ dependencies:
     specifier: ^1.1.2
     version: 1.1.2(@types/react-dom@19.1.9)(@types/react@19.1.12)(react-dom@19.1.1)(react@19.1.1)
   vite-plugin-enter-dev:
-    specifier: ^0.0.3
-    version: 0.0.3(vite@7.1.4)
+    specifier: ^0.0.7
+    version: 0.0.7(vite@7.1.4)
   zod:
     specifier: ^4.1.5
     version: 4.1.5
@@ -4715,8 +4715,8 @@ packages:
       d3-timer: 3.0.1
     dev: false
 
-  /vite-plugin-enter-dev@0.0.3(vite@7.1.4):
-    resolution: {integrity: sha512-hf8sjo6LLekZm+vpbPEXJB+G9T6geH/DmdPN6Cy5d1WwJx4TcBnlV90eoUF5Ls8BIVwWF/EchN6amHEf/KnBaQ==}
+  /vite-plugin-enter-dev@0.0.7(vite@7.1.4):
+    resolution: {integrity: sha512-aRq/nYqYuxm1y71UhaVJKv2oELQ3qJC/DGUPk6ZwWpiBi8/hjad71fRNKOKhGqumMCtEkb7ig8Nq/aHVS6EQWg==}
     peerDependencies:
       vite: ^5.0.0 || ^6.0.0
     dependencies:
