@@ -7,32 +7,60 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
+  console.log("=== WeChat Auth Function Start ===");
+  console.log("Method:", req.method);
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const WECHAT_APP_ID = Deno.env.get("WECHAT_APP_ID");
-  const WECHAT_APP_SECRET = Deno.env.get("WECHAT_APP_SECRET");
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  if (!WECHAT_APP_ID || !WECHAT_APP_SECRET) {
-    return new Response(
-      JSON.stringify({ error: "WeChat credentials not configured" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  const url = new URL(req.url);
-  const action = url.searchParams.get("action");
-
   try {
+    const WECHAT_APP_ID = Deno.env.get("WECHAT_APP_ID");
+    const WECHAT_APP_SECRET = Deno.env.get("WECHAT_APP_SECRET");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    console.log("WECHAT_APP_ID:", WECHAT_APP_ID ? "configured" : "NOT configured");
+    console.log("WECHAT_APP_SECRET:", WECHAT_APP_SECRET ? "configured" : "NOT configured");
+
+    if (!WECHAT_APP_ID || !WECHAT_APP_SECRET) {
+      console.error("WeChat credentials missing!");
+      return new Response(
+        JSON.stringify({ 
+          error: "微信登录暂未配置", 
+          message: "请联系管理员配置微信 AppID 和 AppSecret" 
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse request body
+    let body;
+    try {
+      const text = await req.text();
+      console.log("Raw body:", text);
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { action, redirectUri, state, code, openid } = body;
+    console.log("Action:", action);
+
     // Action 1: Get QR code URL for scanning
     if (action === "get-qr-url") {
-      const { redirectUri, state } = await req.json();
+      console.log("Generating QR URL");
+      console.log("redirectUri:", redirectUri);
+      console.log("state:", state);
       
       const qrUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${WECHAT_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_login&state=${state}#wechat_redirect`;
+      
+      console.log("Generated QR URL successfully");
       
       return new Response(
         JSON.stringify({ qrUrl, appId: WECHAT_APP_ID }),
@@ -42,7 +70,7 @@ Deno.serve(async (req) => {
 
     // Action 2: Exchange code for access token and user info
     if (action === "callback") {
-      const { code } = await req.json();
+      console.log("Processing callback with code:", code ? "present" : "missing");
       
       if (!code) {
         return new Response(
@@ -57,24 +85,24 @@ Deno.serve(async (req) => {
       const tokenResponse = await fetch(tokenUrl);
       const tokenData = await tokenResponse.json();
 
+      console.log("Token response errcode:", tokenData.errcode);
+
       if (tokenData.errcode) {
-        console.error("WeChat token error:", tokenData);
         return new Response(
           JSON.stringify({ error: "Failed to get access token", details: tokenData.errmsg }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      const { access_token, openid, unionid } = tokenData;
+      const { access_token, openid: wxOpenid, unionid } = tokenData;
 
       // Step 2: Get user info
-      const userInfoUrl = `https://api.weixin.qq.com/sns/userinfo?access_token=${access_token}&openid=${openid}`;
+      const userInfoUrl = `https://api.weixin.qq.com/sns/userinfo?access_token=${access_token}&openid=${wxOpenid}`;
       
       const userInfoResponse = await fetch(userInfoUrl);
       const userInfo = await userInfoResponse.json();
 
       if (userInfo.errcode) {
-        console.error("WeChat user info error:", userInfo);
         return new Response(
           JSON.stringify({ error: "Failed to get user info", details: userInfo.errmsg }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -84,17 +112,15 @@ Deno.serve(async (req) => {
       // Step 3: Create or update user in Supabase
       const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-      // Check if user exists by wechat_openid
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id")
-        .eq("wechat_openid", openid)
+        .eq("wechat_openid", wxOpenid)
         .maybeSingle();
 
       let userId: string;
 
       if (existingProfile) {
-        // User exists, update profile
         userId = existingProfile.id;
         
         await supabase
@@ -107,8 +133,7 @@ Deno.serve(async (req) => {
           })
           .eq("id", userId);
       } else {
-        // Create new user
-        const email = `wx_${openid}@wechat.placeholder`;
+        const email = `wx_${wxOpenid}@wechat.placeholder`;
         const password = crypto.randomUUID();
 
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -117,14 +142,13 @@ Deno.serve(async (req) => {
           email_confirm: true,
           user_metadata: {
             provider: "wechat",
-            wechat_openid: openid,
+            wechat_openid: wxOpenid,
             nickname: userInfo.nickname,
             avatar_url: userInfo.headimgurl,
           },
         });
 
         if (authError) {
-          console.error("Auth create error:", authError);
           return new Response(
             JSON.stringify({ error: "Failed to create user", details: authError.message }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -133,27 +157,24 @@ Deno.serve(async (req) => {
 
         userId = authData.user.id;
 
-        // Update profile with WeChat info
         await supabase
           .from("profiles")
           .update({
             nickname: userInfo.nickname,
             avatar_url: userInfo.headimgurl,
-            wechat_openid: openid,
+            wechat_openid: wxOpenid,
             wechat_unionid: unionid,
             is_anonymous: false,
           })
           .eq("id", userId);
       }
 
-      // Step 4: Generate session token for the user
       const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
         type: "magiclink",
-        email: `wx_${openid}@wechat.placeholder`,
+        email: `wx_${wxOpenid}@wechat.placeholder`,
       });
 
       if (sessionError) {
-        console.error("Session error:", sessionError);
         return new Response(
           JSON.stringify({ error: "Failed to create session" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -167,7 +188,7 @@ Deno.serve(async (req) => {
           userInfo: {
             nickname: userInfo.nickname,
             avatar: userInfo.headimgurl,
-            openid,
+            openid: wxOpenid,
           },
           magicLink: sessionData.properties?.action_link,
         }),
@@ -175,10 +196,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Action 3: Direct login for existing WeChat user
+    // Action 3: Direct login
     if (action === "login") {
-      const { openid } = await req.json();
-      
       const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
       const { data: profile } = await supabase
@@ -215,15 +234,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.error("Invalid action received:", action);
     return new Response(
-      JSON.stringify({ error: "Invalid action" }),
+      JSON.stringify({ error: "Invalid action", received: action }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("WeChat auth error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: error.message }),
+      JSON.stringify({ error: "服务器内部错误", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

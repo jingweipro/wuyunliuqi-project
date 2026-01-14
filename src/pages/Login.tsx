@@ -53,8 +53,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('wechat-auth', {
-        body: { code },
-        headers: { 'Content-Type': 'application/json' },
+        body: { action: 'callback', code },
       });
 
       if (error) throw error;
@@ -117,13 +116,21 @@ export default function LoginPage() {
       const redirectUri = `${window.location.origin}/login`;
       
       const { data, error } = await supabase.functions.invoke('wechat-auth', {
-        body: { redirectUri, state },
-        headers: { 'Content-Type': 'application/json' },
+        body: { action: 'get-qr-url', redirectUri, state },
       });
 
-      if (error) throw error;
+      console.log('WeChat QR response:', { data, error });
 
-      if (data.qrUrl) {
+      if (error) {
+        console.error('WeChat function error:', error);
+        throw new Error(error.message || '调用服务失败');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error + (data.message ? ': ' + data.message : ''));
+      }
+
+      if (data?.qrUrl) {
         setWechatQrUrl(data.qrUrl);
         setWechatDialogOpen(true);
       } else {
