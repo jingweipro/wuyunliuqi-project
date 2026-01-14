@@ -1,0 +1,62 @@
+
+-- 用户资料表
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nickname TEXT,
+  avatar_url TEXT,
+  birth_year INTEGER,
+  birth_month INTEGER,
+  birth_day INTEGER,
+  region TEXT,
+  is_anonymous BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 启用 RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- RLS 策略：用户只能访问自己的资料
+CREATE POLICY "Users can view own profile" 
+  ON profiles FOR SELECT 
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile" 
+  ON profiles FOR INSERT 
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" 
+  ON profiles FOR UPDATE 
+  USING (auth.uid() = id);
+
+-- 创建用户收藏表
+CREATE TABLE favorites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  year INTEGER NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 启用 RLS
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+
+-- RLS 策略
+CREATE POLICY "Users can manage own favorites" 
+  ON favorites FOR ALL 
+  USING (auth.uid() = user_id);
+
+-- 自动创建用户资料的触发器函数
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, is_anonymous)
+  VALUES (NEW.id, NEW.is_anonymous);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 创建触发器
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

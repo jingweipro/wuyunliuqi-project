@@ -14,7 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          note: string | null
+          user_id: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          user_id?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          user_id?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          birth_day: number | null
+          birth_month: number | null
+          birth_year: number | null
+          created_at: string | null
+          id: string
+          is_anonymous: boolean | null
+          nickname: string | null
+          region: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          birth_day?: number | null
+          birth_month?: number | null
+          birth_year?: number | null
+          created_at?: string | null
+          id: string
+          is_anonymous?: boolean | null
+          nickname?: string | null
+          region?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          birth_day?: number | null
+          birth_month?: number | null
+          birth_year?: number | null
+          created_at?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          nickname?: string | null
+          region?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

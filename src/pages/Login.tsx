@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { createAnonymousUser, createUserWithBirthInfo } from '@/lib/user-store';
-import { User, Calendar, MapPin, Eye } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { User, Calendar, MapPin, Eye, Mail, Lock } from 'lucide-react';
 
 // 省份列表
 const PROVINCES = [
@@ -19,12 +20,18 @@ const PROVINCES = [
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { signInAnonymously, signUpWithEmail, signInWithEmail, updateProfile, loading: authLoading } = useAuthContext();
+  const { toast } = useToast();
+  
   const [birthYear, setBirthYear] = useState<string>('');
   const [birthMonth, setBirthMonth] = useState<string>('');
   const [birthDay, setBirthDay] = useState<string>('');
   const [region, setRegion] = useState<string>('');
   const [nickname, setNickname] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   // 生成年份选项 (1900-当前年)
   const currentYear = new Date().getFullYear();
@@ -36,35 +43,76 @@ export default function LoginPage() {
   // 生成日期选项
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
-  const handleBirthInfoLogin = async () => {
-    if (!birthYear || !birthMonth || !birthDay) {
-      return;
-    }
-    
+  // 匿名登录
+  const handleAnonymousLogin = async () => {
     setIsLoading(true);
     try {
-      createUserWithBirthInfo(
-        parseInt(birthYear),
-        parseInt(birthMonth),
-        parseInt(birthDay),
-        region,
-        nickname
-      );
+      await signInAnonymously();
+      toast({ title: '登录成功', description: '欢迎使用五运六气系统' });
       navigate('/dashboard');
+    } catch (error) {
+      toast({ 
+        title: '登录失败', 
+        description: error instanceof Error ? error.message : '请稍后重试',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAnonymousLogin = async () => {
+  // 邮箱登录/注册
+  const handleEmailAuth = async () => {
+    if (!email || !password) {
+      toast({ title: '请填写完整信息', variant: 'destructive' });
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      createAnonymousUser();
+      if (isSignUp) {
+        await signUpWithEmail(email, password);
+        
+        // 如果填写了出生信息，更新资料
+        if (birthYear && birthMonth && birthDay) {
+          await updateProfile({
+            nickname: nickname || undefined,
+            birth_year: parseInt(birthYear),
+            birth_month: parseInt(birthMonth),
+            birth_day: parseInt(birthDay),
+            region: region || undefined,
+          });
+        }
+        
+        toast({ title: '注册成功', description: '欢迎使用五运六气系统' });
+      } else {
+        await signInWithEmail(email, password);
+        toast({ title: '登录成功', description: '欢迎回来' });
+      }
       navigate('/dashboard');
+    } catch (error) {
+      toast({ 
+        title: isSignUp ? '注册失败' : '登录失败', 
+        description: error instanceof Error ? error.message : '请稍后重试',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-primary-900 flex items-center justify-center">
+            <span className="text-2xl font-serif text-primary-foreground">运</span>
+          </div>
+          <p className="text-muted-foreground">正在加载...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-secondary/30">
@@ -90,11 +138,11 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent>
-          <Tabs defaultValue="birth" className="w-full">
+          <Tabs defaultValue="email" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="birth" className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                出生信息
+              <TabsTrigger value="email" className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                邮箱登录
               </TabsTrigger>
               <TabsTrigger value="anonymous" className="flex items-center gap-2">
                 <Eye className="w-4 h-4" />
@@ -102,97 +150,141 @@ export default function LoginPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="birth" className="space-y-4">
+            <TabsContent value="email" className="space-y-4">
+              {/* 切换登录/注册 */}
+              <div className="flex justify-center gap-4 text-sm">
+                <button 
+                  onClick={() => setIsSignUp(false)}
+                  className={`pb-1 border-b-2 transition-colors ${!isSignUp ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
+                >
+                  登录
+                </button>
+                <button 
+                  onClick={() => setIsSignUp(true)}
+                  className={`pb-1 border-b-2 transition-colors ${isSignUp ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
+                >
+                  注册
+                </button>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="nickname" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  昵称 (可选)
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  邮箱 <span className="text-primary">*</span>
                 </Label>
                 <Input
-                  id="nickname"
-                  placeholder="请输入您的昵称"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="请输入邮箱"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  出生日期 <span className="text-primary">*</span>
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  密码 <span className="text-primary">*</span>
                 </Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Select value={birthYear} onValueChange={setBirthYear}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="年" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {years.map((year) => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}年
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={birthMonth} onValueChange={setBirthMonth}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="月" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {months.map((month) => (
-                        <SelectItem key={month} value={month.toString()}>
-                          {month}月
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={birthDay} onValueChange={setBirthDay}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="日" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {days.map((day) => (
-                        <SelectItem key={day} value={day.toString()}>
-                          {day}日
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="请输入密码"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  所在地区 (可选)
-                </Label>
-                <Select value={region} onValueChange={setRegion}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择地区" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {PROVINCES.map((province) => (
-                      <SelectItem key={province} value={province}>
-                        {province}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {isSignUp && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="nickname" className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      昵称 (可选)
+                    </Label>
+                    <Input
+                      id="nickname"
+                      placeholder="请输入您的昵称"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      出生日期 (可选)
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Select value={birthYear} onValueChange={setBirthYear}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="年" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}年
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={birthMonth} onValueChange={setBirthMonth}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="月" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month) => (
+                            <SelectItem key={month} value={month.toString()}>
+                              {month}月
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={birthDay} onValueChange={setBirthDay}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="日" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {days.map((day) => (
+                            <SelectItem key={day} value={day.toString()}>
+                              {day}日
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      所在地区 (可选)
+                    </Label>
+                    <Select value={region} onValueChange={setRegion}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择地区" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {PROVINCES.map((province) => (
+                          <SelectItem key={province} value={province}>
+                            {province}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
 
               <Button
                 className="w-full mt-6"
-                onClick={handleBirthInfoLogin}
-                disabled={!birthYear || !birthMonth || !birthDay || isLoading}
+                onClick={handleEmailAuth}
+                disabled={!email || !password || isLoading}
               >
-                {isLoading ? '正在进入...' : '开始探索'}
+                {isLoading ? '处理中...' : (isSignUp ? '注册并进入' : '登录')}
               </Button>
-
-              <p className="text-xs text-center text-muted-foreground mt-4">
-                输入出生信息后，系统将为您展示个人五运六气配置
-              </p>
             </TabsContent>
 
             <TabsContent value="anonymous" className="space-y-6">
@@ -204,7 +296,7 @@ export default function LoginPage() {
                 <p className="text-sm text-muted-foreground">
                   无需提供个人信息，直接浏览五运六气年历。
                   <br />
-                  您可以随时在系统内添加个人信息查看个人排盘。
+                  您可以随时在系统内完善个人信息查看个人排盘。
                 </p>
               </div>
 

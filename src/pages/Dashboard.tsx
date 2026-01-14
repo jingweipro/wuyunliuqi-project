@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, clearUser, UserInfo } from '@/lib/user-store';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { getYearInfo, getCurrentQi, WU_XING_ATTRIBUTES, LIU_QI_ATTRIBUTES } from '@/lib/wuyun-liuqi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { 
   LogOut, 
   Calendar, 
@@ -15,44 +19,120 @@ import {
   BookOpen,
   CircleDot,
   Info,
-  ChevronRight
+  ChevronRight,
+  Settings
 } from 'lucide-react';
 import WuYunLiuQiChart from '@/components/WuYunLiuQiChart';
 import LiuQiTimeline from '@/components/LiuQiTimeline';
 import KnowledgeSection from '@/components/KnowledgeSection';
 
+// 省份列表
+const PROVINCES = [
+  '北京', '上海', '天津', '重庆', '河北', '山西', '辽宁', '吉林', '黑龙江',
+  '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南',
+  '广东', '海南', '四川', '贵州', '云南', '陕西', '甘肃', '青海', '台湾',
+  '内蒙古', '广西', '西藏', '宁夏', '新疆', '香港', '澳门',
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const { user, profile, loading, signOut, updateProfile } = useAuthContext();
+  const { toast } = useToast();
+  
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState('overview');
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  
+  // 编辑资料表单
+  const [editNickname, setEditNickname] = useState('');
+  const [editBirthYear, setEditBirthYear] = useState('');
+  const [editBirthMonth, setEditBirthMonth] = useState('');
+  const [editBirthDay, setEditBirthDay] = useState('');
+  const [editRegion, setEditRegion] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 150 }, (_, i) => currentYear + 50 - i);
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
+    if (!loading && !user) {
       navigate('/login');
-      return;
     }
-    setUser(currentUser);
-    
-    // 如果用户有出生年份，默认显示出生年份
-    if (currentUser.birthYear) {
-      setSelectedYear(currentUser.birthYear);
-    }
-  }, [navigate]);
+  }, [loading, user, navigate]);
 
-  const handleLogout = () => {
-    clearUser();
-    navigate('/login');
+  useEffect(() => {
+    if (profile?.birth_year) {
+      setSelectedYear(profile.birth_year);
+    }
+  }, [profile]);
+
+  // 初始化编辑表单
+  useEffect(() => {
+    if (profile) {
+      setEditNickname(profile.nickname || '');
+      setEditBirthYear(profile.birth_year?.toString() || '');
+      setEditBirthMonth(profile.birth_month?.toString() || '');
+      setEditBirthDay(profile.birth_day?.toString() || '');
+      setEditRegion(profile.region || '');
+    }
+  }, [profile]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      toast({
+        title: '登出失败',
+        description: error instanceof Error ? error.message : '请稍后重试',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        nickname: editNickname || null,
+        birth_year: editBirthYear ? parseInt(editBirthYear) : null,
+        birth_month: editBirthMonth ? parseInt(editBirthMonth) : null,
+        birth_day: editBirthDay ? parseInt(editBirthDay) : null,
+        region: editRegion || null,
+      });
+      toast({ title: '保存成功', description: '个人信息已更新' });
+      setProfileDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: '保存失败',
+        description: error instanceof Error ? error.message : '请稍后重试',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const yearInfo = getYearInfo(selectedYear);
   const currentQiIndex = getCurrentQi();
 
-  if (!user) return null;
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-primary-900 flex items-center justify-center">
+            <span className="text-2xl font-serif text-primary-foreground">运</span>
+          </div>
+          <p className="text-muted-foreground">正在加载...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = profile?.nickname || user.email?.split('@')[0] || '访客';
+  const isAnonymous = user.is_anonymous || profile?.is_anonymous;
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,19 +150,110 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-secondary text-foreground text-sm">
-                  {user.nickname?.[0] || '访'}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-foreground hidden sm:inline">
-                {user.nickname || '访客'}
-              </span>
-              {user.isAnonymous && (
-                <Badge variant="secondary" className="text-xs">匿名</Badge>
-              )}
-            </div>
+            <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="bg-secondary text-foreground text-sm">
+                      {displayName[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-foreground hidden sm:inline">
+                    {displayName}
+                  </span>
+                  {isAnonymous && (
+                    <Badge variant="secondary" className="text-xs">匿名</Badge>
+                  )}
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-serif flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    个人信息
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>昵称</Label>
+                    <Input
+                      value={editNickname}
+                      onChange={(e) => setEditNickname(e.target.value)}
+                      placeholder="请输入昵称"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>出生日期</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Select value={editBirthYear} onValueChange={setEditBirthYear}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="年" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {years.slice(50).map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}年
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={editBirthMonth} onValueChange={setEditBirthMonth}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="月" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month) => (
+                            <SelectItem key={month} value={month.toString()}>
+                              {month}月
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={editBirthDay} onValueChange={setEditBirthDay}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="日" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {days.map((day) => (
+                            <SelectItem key={day} value={day.toString()}>
+                              {day}日
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>所在地区</Label>
+                    <Select value={editRegion} onValueChange={setEditRegion}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择地区" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {PROVINCES.map((province) => (
+                          <SelectItem key={province} value={province}>
+                            {province}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    className="w-full" 
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? '保存中...' : '保存'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
             </Button>
@@ -120,11 +291,11 @@ export default function Dashboard() {
                 ))}
               </SelectContent>
             </Select>
-            {user.birthYear && (
+            {profile?.birth_year && (
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => setSelectedYear(user.birthYear!)}
+                onClick={() => setSelectedYear(profile.birth_year!)}
               >
                 我的出生年
               </Button>
@@ -250,7 +421,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Personal Info Card (if available) */}
-                {user.birthYear && selectedYear === user.birthYear && (
+                {profile?.birth_year && selectedYear === profile.birth_year && (
                   <Card className="border-primary/30 bg-primary/5">
                     <CardHeader className="pb-3">
                       <CardTitle className="font-serif text-lg flex items-center gap-2">
@@ -260,7 +431,7 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">
-                        您出生于{user.birthYear}年{user.birthMonth}月{user.birthDay}日，
+                        您出生于{profile.birth_year}年{profile.birth_month}月{profile.birth_day}日，
                         先天禀赋为<span className="text-primary font-medium">{yearInfo.ganZhi}年</span>的运气特征，
                         主运{yearInfo.daYun}，司天{yearInfo.siTian}。
                         这影响着您的体质特点和易感疾病倾向。

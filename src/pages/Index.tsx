@@ -1,17 +1,20 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isLoggedIn } from '@/lib/user-store';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export default function Index() {
   const navigate = useNavigate();
+  const { user, loading } = useAuthContext();
 
   useEffect(() => {
-    if (isLoggedIn()) {
-      navigate('/dashboard');
-    } else {
-      navigate('/login');
+    if (!loading) {
+      if (user) {
+        navigate('/dashboard');
+      } else {
+        navigate('/login');
+      }
     }
-  }, [navigate]);
+  }, [user, loading, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
