@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WU_XING, WU_XING_ATTRIBUTES, TIAN_GAN, DI_ZHI, LIU_QI_ORDER, LIU_QI_ATTRIBUTES, type LiuQi } from '@/lib/wuyun-liuqi';
+import { WU_XING, WU_XING_ATTRIBUTES, TIAN_GAN, DI_ZHI, LIU_QI_ORDER, LIU_QI_ATTRIBUTES, type LiuQi, type WuXing } from '@/lib/wuyun-liuqi';
 import { BookOpen, Compass, Flame, Droplets, Wind, Mountain, Sparkles } from 'lucide-react';
 
 interface YearInfo {
@@ -16,6 +16,16 @@ interface YearInfo {
   zaiQuan: LiuQi;
   zhuQi: LiuQi[];
   keQi: LiuQi[];
+  zhuYun: { xing: WuXing; name: string }[];
+  keYun: { xing: WuXing; name: string; taiGuoBuJi: '太过' | '不及' }[];
+  keZhuJiaLin: {
+    qiIndex: number;
+    qiName: string;
+    zhuQi: LiuQi;
+    keQi: LiuQi;
+    relation: string;
+    description: string;
+  }[];
 }
 
 interface Props {

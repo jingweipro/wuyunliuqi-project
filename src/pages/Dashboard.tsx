@@ -20,10 +20,13 @@ import {
   CircleDot,
   Info,
   ChevronRight,
-  Settings
+  Settings,
+  Layers,
+  Wind
 } from 'lucide-react';
-import WuYunLiuQiChart from '@/components/WuYunLiuQiChart';
-import LiuQiTimeline from '@/components/LiuQiTimeline';
+import WuYunChart from '@/components/WuYunChart';
+import LiuQiChart from '@/components/LiuQiChart';
+import KeZhuJiaLinCard from '@/components/KeZhuJiaLinCard';
 import KnowledgeSection from '@/components/KnowledgeSection';
 
 // 省份列表
@@ -349,104 +352,347 @@ export default function Dashboard() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="overview" className="flex items-center gap-1">
               <CircleDot className="w-4 h-4" />
-              <span className="hidden sm:inline">总览图</span>
-              <span className="sm:hidden">总览</span>
+              <span className="hidden sm:inline">总览</span>
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="flex items-center gap-2">
+            <TabsTrigger value="wuyun" className="flex items-center gap-1">
+              <Layers className="w-4 h-4" />
+              <span className="hidden sm:inline">五运图</span>
+            </TabsTrigger>
+            <TabsTrigger value="liuqi" className="flex items-center gap-1">
+              <Wind className="w-4 h-4" />
+              <span className="hidden sm:inline">六气图</span>
+            </TabsTrigger>
+            <TabsTrigger value="kezhu" className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              <span className="hidden sm:inline">六气时序</span>
-              <span className="sm:hidden">时序</span>
+              <span className="hidden sm:inline">客主加临</span>
             </TabsTrigger>
-            <TabsTrigger value="knowledge" className="flex items-center gap-2">
+            <TabsTrigger value="knowledge" className="flex items-center gap-1">
               <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">知识详解</span>
-              <span className="sm:hidden">详解</span>
+              <span className="hidden sm:inline">知识</span>
             </TabsTrigger>
           </TabsList>
 
+          {/* 总览 */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
-              {/* Main Chart */}
+              {/* 五运图 */}
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="font-serif text-lg flex items-center gap-2">
-                    <CircleDot className="w-5 h-5 text-primary" />
-                    五运六气总览
+                    <Layers className="w-5 h-5 text-primary" />
+                    五运总览
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <WuYunLiuQiChart yearInfo={yearInfo} currentQiIndex={currentQiIndex} />
+                  <WuYunChart 
+                    year={yearInfo.year}
+                    ganZhi={yearInfo.ganZhi}
+                    daYun={yearInfo.daYun}
+                    wuXing={yearInfo.wuXing}
+                    taiGuoBuJi={yearInfo.taiGuoBuJi}
+                    zhuYun={yearInfo.zhuYun}
+                    keYun={yearInfo.keYun}
+                  />
                 </CardContent>
               </Card>
 
-              {/* Year Summary */}
-              <div className="space-y-4">
+              {/* 六气图 */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="font-serif text-lg flex items-center gap-2">
+                    <Wind className="w-5 h-5 text-accent" />
+                    六气总览
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <LiuQiChart 
+                    year={yearInfo.year}
+                    ganZhi={yearInfo.ganZhi}
+                    siTian={yearInfo.siTian}
+                    zaiQuan={yearInfo.zaiQuan}
+                    zhuQi={yearInfo.zhuQi}
+                    keQi={yearInfo.keQi}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 年运解读 */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="font-serif text-lg flex items-center gap-2">
+                    <Info className="w-5 h-5 text-primary" />
+                    年运解读
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 rounded-lg bg-secondary/50">
+                    <h4 className="font-medium text-foreground mb-2">干支纪年</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedYear}年为<span className="text-primary font-medium">{yearInfo.ganZhi}年</span>，
+                      天干<span className="text-primary">{yearInfo.gan}</span>属{TIAN_GAN_WU_YUN_DESC[yearInfo.gan]}，
+                      地支<span className="text-primary">{yearInfo.zhi}</span>配{yearInfo.siTian}司天。
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-secondary/50">
+                    <h4 className="font-medium text-foreground mb-2">运气特点</h4>
+                    <p className="text-sm text-muted-foreground">
+                      本年{yearInfo.daYun}{yearInfo.taiGuoBuJi}，
+                      {yearInfo.taiGuoBuJi === '太过' 
+                        ? `${yearInfo.wuXing}气偏盛，需防${getKeElement(yearInfo.wuXing)}气受克` 
+                        : `${yearInfo.wuXing}气不足，宜补${yearInfo.wuXing}养生`}。
+                      上半年{LIU_QI_ATTRIBUTES[yearInfo.siTian].nature}气主令，
+                      下半年{LIU_QI_ATTRIBUTES[yearInfo.zaiQuan].nature}气当权。
+                    </p>
+                  </div>
+
+                  <Button variant="ghost" className="w-full justify-between" onClick={() => setActiveTab('kezhu')}>
+                    查看客主加临详解
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Personal Info Card (if available) */}
+              {profile?.birth_year && selectedYear === profile.birth_year ? (
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="font-serif text-lg flex items-center gap-2">
+                      <User className="w-5 h-5 text-primary" />
+                      个人先天运气
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      您出生于{profile.birth_year}年{profile.birth_month}月{profile.birth_day}日，
+                      先天禀赋为<span className="text-primary font-medium">{yearInfo.ganZhi}年</span>的运气特征。
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded bg-card">
+                        <p className="text-xs text-muted-foreground">主运</p>
+                        <p className="font-medium text-foreground">{yearInfo.daYun}</p>
+                      </div>
+                      <div className="p-3 rounded bg-card">
+                        <p className="text-xs text-muted-foreground">司天</p>
+                        <p className="font-medium text-foreground">{yearInfo.siTian.slice(0, 4)}</p>
+                      </div>
+                      <div className="p-3 rounded bg-card">
+                        <p className="text-xs text-muted-foreground">在泉</p>
+                        <p className="font-medium text-foreground">{yearInfo.zaiQuan.slice(0, 4)}</p>
+                      </div>
+                      <div className="p-3 rounded bg-card">
+                        <p className="text-xs text-muted-foreground">太过/不及</p>
+                        <p className="font-medium text-foreground">{yearInfo.taiGuoBuJi}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="font-serif text-lg flex items-center gap-2">
                       <Info className="w-5 h-5 text-accent" />
-                      年运解读
+                      养生提示
                     </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      根据{selectedYear}年运气特点，养生应注意：
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-4">
+                      <li>
+                        {yearInfo.taiGuoBuJi === '太过' 
+                          ? `${yearInfo.wuXing}气太过，宜清泻${yearInfo.wuXing}，防止${yearInfo.wuXing}气过盛`
+                          : `${yearInfo.wuXing}气不及，宜温补${yearInfo.wuXing}，扶助正气`}
+                      </li>
+                      <li>上半年防{LIU_QI_ATTRIBUTES[yearInfo.siTian].nature}邪为病</li>
+                      <li>下半年防{LIU_QI_ATTRIBUTES[yearInfo.zaiQuan].nature}邪侵袭</li>
+                      <li>顺应时令，调和阴阳</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* 五运图 */}
+          <TabsContent value="wuyun">
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <WuYunChart 
+                    year={yearInfo.year}
+                    ganZhi={yearInfo.ganZhi}
+                    daYun={yearInfo.daYun}
+                    wuXing={yearInfo.wuXing}
+                    taiGuoBuJi={yearInfo.taiGuoBuJi}
+                    zhuYun={yearInfo.zhuYun}
+                    keYun={yearInfo.keYun}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg">五运说明</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="p-4 rounded-lg bg-secondary/50">
-                      <h4 className="font-medium text-foreground mb-2">干支纪年</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedYear}年为<span className="text-primary font-medium">{yearInfo.ganZhi}年</span>，
-                        天干<span className="text-primary">{yearInfo.gan}</span>属{TIAN_GAN_WU_YUN_DESC[yearInfo.gan]}，
-                        地支<span className="text-primary">{yearInfo.zhi}</span>配{yearInfo.siTian}司天。
+                      <h4 className="font-medium text-foreground mb-2">主运（固定）</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        主运每年固定不变，从初运到五运依次为：木、火、土、金、水。
+                        每运约73天，代表地球自身的五行规律。
                       </p>
+                      <div className="flex flex-wrap gap-2">
+                        {yearInfo.zhuYun.map((yun, i) => (
+                          <Badge 
+                            key={i} 
+                            variant="secondary"
+                            style={{ 
+                              backgroundColor: `${WU_XING_ATTRIBUTES[yun.xing].color}20`,
+                              color: WU_XING_ATTRIBUTES[yun.xing].color
+                            }}
+                          >
+                            {yun.name}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="p-4 rounded-lg bg-secondary/50">
-                      <h4 className="font-medium text-foreground mb-2">运气特点</h4>
-                      <p className="text-sm text-muted-foreground">
-                        本年{yearInfo.daYun}{yearInfo.taiGuoBuJi}，
-                        {yearInfo.taiGuoBuJi === '太过' 
-                          ? `${yearInfo.wuXing}气偏盛，需防${getKeElement(yearInfo.wuXing)}气受克` 
-                          : `${yearInfo.wuXing}气不足，宜补${yearInfo.wuXing}养生`}。
-                        上半年{LIU_QI_ATTRIBUTES[yearInfo.siTian].nature}气主令，
-                        下半年{LIU_QI_ATTRIBUTES[yearInfo.zaiQuan].nature}气当权。
+                      <h4 className="font-medium text-foreground mb-2">客运（流转）</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        客运随年干变化，从中运（{yearInfo.daYun}）开始，按五行相生顺序排列。
+                        太过不及交替变化，代表天气对地气的影响。
                       </p>
+                      <div className="flex flex-wrap gap-2">
+                        {yearInfo.keYun.map((yun, i) => (
+                          <Badge 
+                            key={i} 
+                            variant="outline"
+                            className="border-current"
+                            style={{ color: WU_XING_ATTRIBUTES[yun.xing].color }}
+                          >
+                            {yun.xing}·{yun.taiGuoBuJi}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
 
-                    <Button variant="ghost" className="w-full justify-between" onClick={() => setActiveTab('knowledge')}>
-                      查看完整知识详解
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
+                    <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
+                      <h4 className="font-medium text-foreground mb-2">本年中运</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {yearInfo.year}年{yearInfo.gan}年，中运为<span className="text-primary font-medium">{yearInfo.daYun}</span>，
+                        {yearInfo.taiGuoBuJi === '太过' ? '阳干主岁，运气太过' : '阴干主岁，运气不及'}。
+                        全年以{yearInfo.wuXing}气为主导。
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
-
-                {/* Personal Info Card (if available) */}
-                {profile?.birth_year && selectedYear === profile.birth_year && (
-                  <Card className="border-primary/30 bg-primary/5">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="font-serif text-lg flex items-center gap-2">
-                        <User className="w-5 h-5 text-primary" />
-                        个人先天运气
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        您出生于{profile.birth_year}年{profile.birth_month}月{profile.birth_day}日，
-                        先天禀赋为<span className="text-primary font-medium">{yearInfo.ganZhi}年</span>的运气特征，
-                        主运{yearInfo.daYun}，司天{yearInfo.siTian}。
-                        这影响着您的体质特点和易感疾病倾向。
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="timeline">
-            <LiuQiTimeline yearInfo={yearInfo} currentQiIndex={currentQiIndex} />
+          {/* 六气图 */}
+          <TabsContent value="liuqi">
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <LiuQiChart 
+                    year={yearInfo.year}
+                    ganZhi={yearInfo.ganZhi}
+                    siTian={yearInfo.siTian}
+                    zaiQuan={yearInfo.zaiQuan}
+                    zhuQi={yearInfo.zhuQi}
+                    keQi={yearInfo.keQi}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg">六气说明</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 rounded-lg bg-secondary/50">
+                      <h4 className="font-medium text-foreground mb-2">主气（固定）</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        主气每年固定不变，从初之气到终之气依次为：厥阴风木、少阴君火、少阳相火、太阴湿土、阳明燥金、太阳寒水。
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {yearInfo.zhuQi.map((qi, i) => (
+                          <div 
+                            key={i} 
+                            className="text-center p-2 rounded text-xs"
+                            style={{ 
+                              backgroundColor: `${WU_XING_ATTRIBUTES[LIU_QI_ATTRIBUTES[qi].element].color}15`
+                            }}
+                          >
+                            <div className="font-medium text-foreground">{['初', '二', '三', '四', '五', '终'][i]}之气</div>
+                            <div className="text-muted-foreground">{qi.slice(0, 2)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-secondary/50">
+                      <h4 className="font-medium text-foreground mb-2">客气（流转）</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        客气随年支变化。三之气为司天，终之气为在泉。
+                        司天主导上半年气候，在泉主导下半年气候。
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {yearInfo.keQi.map((qi, i) => (
+                          <div 
+                            key={i} 
+                            className={`text-center p-2 rounded text-xs ${
+                              i === 2 ? 'ring-2 ring-primary' : i === 5 ? 'ring-2 ring-accent' : ''
+                            }`}
+                            style={{ 
+                              backgroundColor: `${WU_XING_ATTRIBUTES[LIU_QI_ATTRIBUTES[qi].element].color}15`
+                            }}
+                          >
+                            <div className="font-medium text-foreground">
+                              {i === 2 ? '司天' : i === 5 ? '在泉' : `${['初', '二', '三', '四', '五', '终'][i]}之气`}
+                            </div>
+                            <div className="text-muted-foreground">{qi.slice(0, 2)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
+                      <h4 className="font-medium text-foreground mb-2">本年司天在泉</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {yearInfo.year}年{yearInfo.zhi}年，司天为<span className="text-primary font-medium">{yearInfo.siTian}</span>，
+                        在泉为<span className="text-accent font-medium">{yearInfo.zaiQuan}</span>。
+                        上半年{LIU_QI_ATTRIBUTES[yearInfo.siTian].nature}气当令，
+                        下半年{LIU_QI_ATTRIBUTES[yearInfo.zaiQuan].nature}气主时。
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
+          {/* 客主加临 */}
+          <TabsContent value="kezhu">
+            <KeZhuJiaLinCard 
+              keZhuJiaLin={yearInfo.keZhuJiaLin}
+              siTian={yearInfo.siTian}
+              zaiQuan={yearInfo.zaiQuan}
+            />
+          </TabsContent>
+
+          {/* 知识详解 */}
           <TabsContent value="knowledge">
             <KnowledgeSection yearInfo={yearInfo} />
           </TabsContent>

@@ -18,10 +18,56 @@ export const LIU_QI = ['厥阴风木', '少阴君火', '少阳相火', '太阴�
 export type LiuQi = typeof LIU_QI[number];
 
 // 六气简称
-export const LIU_QI_SHORT = ['风', '热', '暑', '湿', '燥', '寒'] as const;
+export const LIU_QI_SHORT = ['风木', '君火', '相火', '湿土', '燥金', '寒水'] as const;
 
 // 五运
 export const WU_YUN = ['土运', '金运', '水运', '木运', '火运'] as const;
+export type WuYunType = typeof WU_YUN[number];
+
+// 五运对应五行
+export const WU_YUN_XING: Record<string, WuXing> = {
+  '土运': '土',
+  '金运': '金',
+  '水运': '水',
+  '木运': '木',
+  '火运': '火',
+};
+
+// 24节气
+export const JIE_QI = [
+  '小寒', '大寒', '立春', '雨水', '惊蛰', '春分',
+  '清明', '谷雨', '立夏', '小满', '芒种', '夏至',
+  '小暑', '大暑', '立秋', '处暑', '白露', '秋分',
+  '寒露', '霜降', '立冬', '小雪', '大雪', '冬至'
+] as const;
+
+// 节气对应月份和日期（近似值）
+export const JIE_QI_DATES: { name: string; month: number; day: number }[] = [
+  { name: '小寒', month: 1, day: 6 },
+  { name: '大寒', month: 1, day: 20 },
+  { name: '立春', month: 2, day: 4 },
+  { name: '雨水', month: 2, day: 19 },
+  { name: '惊蛰', month: 3, day: 6 },
+  { name: '春分', month: 3, day: 21 },
+  { name: '清明', month: 4, day: 5 },
+  { name: '谷雨', month: 4, day: 20 },
+  { name: '立夏', month: 5, day: 6 },
+  { name: '小满', month: 5, day: 21 },
+  { name: '芒种', month: 6, day: 6 },
+  { name: '夏至', month: 6, day: 21 },
+  { name: '小暑', month: 7, day: 7 },
+  { name: '大暑', month: 7, day: 23 },
+  { name: '立秋', month: 8, day: 8 },
+  { name: '处暑', month: 8, day: 23 },
+  { name: '白露', month: 9, day: 8 },
+  { name: '秋分', month: 9, day: 23 },
+  { name: '寒露', month: 10, day: 8 },
+  { name: '霜降', month: 10, day: 24 },
+  { name: '立冬', month: 11, day: 8 },
+  { name: '小雪', month: 11, day: 22 },
+  { name: '大雪', month: 12, day: 7 },
+  { name: '冬至', month: 12, day: 22 },
+];
 
 // 天干配五运 (甲己-土, 乙庚-金, 丙辛-水, 丁壬-木, 戊癸-火)
 export const TIAN_GAN_WU_YUN: Record<string, { yun: string; xing: WuXing }> = {
@@ -85,7 +131,7 @@ export const WU_XING_ATTRIBUTES: Record<WuXing, {
   '木': { color: '#1A8A5C', colorClass: 'element-wood', direction: '东', season: '春', organ: '肝/胆', emotion: '怒' },
   '火': { color: '#D4301F', colorClass: 'element-fire', direction: '南', season: '夏', organ: '心/小肠', emotion: '喜' },
   '土': { color: '#C88A2E', colorClass: 'element-earth', direction: '中', season: '长夏', organ: '脾/胃', emotion: '思' },
-  '金': { color: '#CDD1D6', colorClass: 'element-metal', direction: '西', season: '秋', organ: '肺/大肠', emotion: '悲' },
+  '金': { color: '#9CA3AF', colorClass: 'element-metal', direction: '西', season: '秋', organ: '肺/大肠', emotion: '悲' },
   '水': { color: '#1E3A52', colorClass: 'element-water', direction: '北', season: '冬', organ: '肾/膀胱', emotion: '恐' },
 };
 
@@ -94,20 +140,40 @@ export const LIU_QI_ATTRIBUTES: Record<LiuQi, {
   element: WuXing;
   nature: string;
   period: string;
+  jieQiStart: string;
+  jieQiEnd: string;
 }> = {
-  '厥阴风木': { element: '木', nature: '风', period: '初之气(大寒-春分)' },
-  '少阴君火': { element: '火', nature: '热', period: '二之气(春分-小满)' },
-  '少阳相火': { element: '火', nature: '暑', period: '三之气(小满-大暑)' },
-  '太阴湿土': { element: '土', nature: '湿', period: '四之气(大暑-秋分)' },
-  '阳明燥金': { element: '金', nature: '燥', period: '五之气(秋分-小雪)' },
-  '太阳寒水': { element: '水', nature: '寒', period: '终之气(小雪-大寒)' },
+  '厥阴风木': { element: '木', nature: '风', period: '初之气', jieQiStart: '大寒', jieQiEnd: '春分' },
+  '少阴君火': { element: '火', nature: '热', period: '二之气', jieQiStart: '春分', jieQiEnd: '小满' },
+  '少阳相火': { element: '火', nature: '暑', period: '三之气', jieQiStart: '小满', jieQiEnd: '大暑' },
+  '太阴湿土': { element: '土', nature: '湿', period: '四之气', jieQiStart: '大暑', jieQiEnd: '秋分' },
+  '阳明燥金': { element: '金', nature: '燥', period: '五之气', jieQiStart: '秋分', jieQiEnd: '小雪' },
+  '太阳寒水': { element: '水', nature: '寒', period: '终之气', jieQiStart: '小雪', jieQiEnd: '大寒' },
 };
+
+// 六气时段信息
+export const QI_PERIODS = [
+  { name: '初之气', jieQiStart: '大寒', jieQiEnd: '春分', dateRange: '1月20日-3月20日' },
+  { name: '二之气', jieQiStart: '春分', jieQiEnd: '小满', dateRange: '3月21日-5月20日' },
+  { name: '三之气', jieQiStart: '小满', jieQiEnd: '大暑', dateRange: '5月21日-7月22日' },
+  { name: '四之气', jieQiStart: '大暑', jieQiEnd: '秋分', dateRange: '7月23日-9月22日' },
+  { name: '五之气', jieQiStart: '秋分', jieQiEnd: '小雪', dateRange: '9月23日-11月21日' },
+  { name: '终之气', jieQiStart: '小雪', jieQiEnd: '大寒', dateRange: '11月22日-1月19日' },
+];
+
+// 五运时段信息（主运固定）
+export const WU_YUN_PERIODS = [
+  { name: '初运', xing: '木' as WuXing, jieQiStart: '大寒', jieQiEnd: '春分', dateRange: '1月20日-3月31日约73天' },
+  { name: '二运', xing: '火' as WuXing, jieQiStart: '春分', jieQiEnd: '芒种', dateRange: '4月1日-6月12日约73天' },
+  { name: '三运', xing: '土' as WuXing, jieQiStart: '芒种', jieQiEnd: '处暑', dateRange: '6月13日-8月24日约73天' },
+  { name: '四运', xing: '金' as WuXing, jieQiStart: '处暑', jieQiEnd: '立冬', dateRange: '8月25日-11月6日约73天' },
+  { name: '五运', xing: '水' as WuXing, jieQiStart: '立冬', jieQiEnd: '大寒', dateRange: '11月7日-1月19日约73天' },
+];
 
 /**
  * 根据年份计算天干地支
  */
 export function getGanZhi(year: number): { gan: string; zhi: string; ganZhi: string } {
-  // 以公元4年(甲子年)为基准
   const offset = (year - 4) % 60;
   const ganIndex = offset % 10;
   const zhiIndex = offset % 12;
@@ -126,8 +192,49 @@ export function getGanZhi(year: number): { gan: string; zhi: string; ganZhi: str
  * 判断年份是太过还是不及
  */
 export function getTaiGuoBuJi(gan: string): '太过' | '不及' {
-  const taiGuoGan = ['甲', '丙', '戊', '庚', '壬']; // 阳干太过
+  const taiGuoGan = ['甲', '丙', '戊', '庚', '壬'];
   return taiGuoGan.includes(gan) ? '太过' : '不及';
+}
+
+/**
+ * 计算主运（固定不变：木火土金水）
+ */
+export function getZhuYun(): { xing: WuXing; name: string }[] {
+  return [
+    { xing: '木', name: '初运·木' },
+    { xing: '火', name: '二运·火' },
+    { xing: '土', name: '三运·土' },
+    { xing: '金', name: '四运·金' },
+    { xing: '水', name: '五运·水' },
+  ];
+}
+
+/**
+ * 计算客运（根据中运推算）
+ * 客运从中运开始，按五行相生顺序排列
+ */
+export function getKeYun(year: number): { xing: WuXing; name: string; taiGuoBuJi: '太过' | '不及' }[] {
+  const { gan } = getGanZhi(year);
+  const zhongYunXing = TIAN_GAN_WU_YUN[gan].xing;
+  const taiGuoBuJi = getTaiGuoBuJi(gan);
+  
+  // 五行相生顺序
+  const shengOrder: WuXing[] = ['木', '火', '土', '金', '水'];
+  const startIndex = shengOrder.indexOf(zhongYunXing);
+  
+  // 客运太过不及交替
+  const keYun: { xing: WuXing; name: string; taiGuoBuJi: '太过' | '不及' }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const xing = shengOrder[(startIndex + i) % 5];
+    const currentTaiGuo = i % 2 === 0 ? taiGuoBuJi : (taiGuoBuJi === '太过' ? '不及' : '太过');
+    keYun.push({
+      xing,
+      name: `${['初', '二', '三', '四', '五'][i]}运·${xing}`,
+      taiGuoBuJi: currentTaiGuo,
+    });
+  }
+  
+  return keYun;
 }
 
 /**
@@ -137,12 +244,16 @@ export function getWuYun(year: number) {
   const { gan } = getGanZhi(year);
   const yunInfo = TIAN_GAN_WU_YUN[gan];
   const taiGuoBuJi = getTaiGuoBuJi(gan);
+  const zhuYun = getZhuYun();
+  const keYun = getKeYun(year);
   
   return {
-    daYun: yunInfo.yun, // 大运(中运)
+    daYun: yunInfo.yun,
     wuXing: yunInfo.xing,
     taiGuoBuJi,
     description: `${gan}年${yunInfo.yun}${taiGuoBuJi}`,
+    zhuYun,
+    keYun,
   };
 }
 
@@ -154,24 +265,110 @@ export function getLiuQi(year: number) {
   const siTian = DI_ZHI_SI_TIAN[zhi];
   const zaiQuan = LIU_QI_OPPOSITE[siTian];
   
-  // 计算主气 (固定不变，从厥阴风木开始)
+  // 主气固定不变
   const zhuQi = [...LIU_QI_ORDER];
   
-  // 计算客气 (根据司天之气确定)
+  // 客气根据司天确定
   const siTianIndex = LIU_QI_ORDER.indexOf(siTian);
   const keQi: LiuQi[] = [];
   for (let i = 0; i < 6; i++) {
-    // 三之气为司天，终之气为在泉
     const index = (siTianIndex - 2 + i + 6) % 6;
     keQi.push(LIU_QI_ORDER[index]);
   }
   
   return {
-    siTian, // 司天
-    zaiQuan, // 在泉
-    zhuQi, // 主气
-    keQi, // 客气
+    siTian,
+    zaiQuan,
+    zhuQi,
+    keQi,
   };
+}
+
+/**
+ * 获取客主加临分析
+ */
+export function getKeZhuJiaLin(year: number): {
+  qiIndex: number;
+  qiName: string;
+  zhuQi: LiuQi;
+  keQi: LiuQi;
+  relation: string;
+  description: string;
+}[] {
+  const { zhuQi, keQi, siTian, zaiQuan } = getLiuQi(year);
+  const { taiGuoBuJi } = getWuYun(year);
+  
+  const qiNames = ['初之气', '二之气', '三之气', '四之气', '五之气', '终之气'];
+  
+  return qiNames.map((name, index) => {
+    const zhu = zhuQi[index];
+    const ke = keQi[index];
+    const zhuElement = LIU_QI_ATTRIBUTES[zhu].element;
+    const keElement = LIU_QI_ATTRIBUTES[ke].element;
+    
+    // 计算主客关系
+    let relation: string;
+    let description: string;
+    
+    if (zhu === ke) {
+      relation = '同气';
+      description = `主客同气，${LIU_QI_ATTRIBUTES[zhu].nature}气偏盛，易见${LIU_QI_ATTRIBUTES[zhu].nature}邪为病`;
+    } else if (isSheng(keElement, zhuElement)) {
+      relation = '客生主·顺';
+      description = `客气${ke}生主气${zhu}，气候平和，万物生长`;
+    } else if (isSheng(zhuElement, keElement)) {
+      relation = '主生客·逆';
+      description = `主气${zhu}生客气${ke}，地气外泄，正气易伤`;
+    } else if (isKe(keElement, zhuElement)) {
+      relation = '客克主·逆';
+      description = `客气${ke}克主气${zhu}，天气胜地，易有灾疫`;
+    } else if (isKe(zhuElement, keElement)) {
+      relation = '主克客·顺';
+      description = `主气${zhu}克客气${ke}，地气制天，气候和平`;
+    } else {
+      relation = '相离';
+      description = `主客相离，各司其政，气候正常`;
+    }
+    
+    // 添加司天在泉标记
+    if (index === 2) {
+      description += `。此为司天（${siTian}）之位，主上半年气候。`;
+    } else if (index === 5) {
+      description += `。此为在泉（${zaiQuan}）之位，主下半年气候。`;
+    }
+    
+    // 添加运气特点
+    if (taiGuoBuJi === '太过') {
+      description += ' 运气太过，当防其盛。';
+    } else {
+      description += ' 运气不及，宜助其弱。';
+    }
+    
+    return {
+      qiIndex: index,
+      qiName: name,
+      zhuQi: zhu,
+      keQi: ke,
+      relation,
+      description,
+    };
+  });
+}
+
+// 判断五行相生
+function isSheng(from: WuXing, to: WuXing): boolean {
+  const shengMap: Record<WuXing, WuXing> = {
+    '木': '火', '火': '土', '土': '金', '金': '水', '水': '木'
+  };
+  return shengMap[from] === to;
+}
+
+// 判断五行相克
+function isKe(from: WuXing, to: WuXing): boolean {
+  const keMap: Record<WuXing, WuXing> = {
+    '木': '土', '土': '水', '水': '火', '火': '金', '金': '木'
+  };
+  return keMap[from] === to;
 }
 
 /**
@@ -181,12 +378,14 @@ export function getYearInfo(year: number) {
   const ganZhi = getGanZhi(year);
   const wuYun = getWuYun(year);
   const liuQi = getLiuQi(year);
+  const keZhuJiaLin = getKeZhuJiaLin(year);
   
   return {
     year,
     ...ganZhi,
     ...wuYun,
     ...liuQi,
+    keZhuJiaLin,
   };
 }
 
@@ -197,20 +396,27 @@ export function getCurrentQi(date: Date = new Date()): number {
   const month = date.getMonth() + 1;
   const day = date.getDate();
   
-  // 简化版节气判断 (大致日期)
-  // 初之气: 大寒(1/20) - 春分(3/20)
-  // 二之气: 春分(3/20) - 小满(5/21)
-  // 三之气: 小满(5/21) - 大暑(7/22)
-  // 四之气: 大暑(7/22) - 秋分(9/23)
-  // 五之气: 秋分(9/23) - 小雪(11/22)
-  // 终之气: 小雪(11/22) - 大寒(1/20)
-  
-  if ((month === 1 && day >= 20) || month === 2 || (month === 3 && day < 20)) return 0;
-  if ((month === 3 && day >= 20) || month === 4 || (month === 5 && day < 21)) return 1;
-  if ((month === 5 && day >= 21) || month === 6 || (month === 7 && day < 22)) return 2;
-  if ((month === 7 && day >= 22) || month === 8 || (month === 9 && day < 23)) return 3;
+  if ((month === 1 && day >= 20) || month === 2 || (month === 3 && day < 21)) return 0;
+  if ((month === 3 && day >= 21) || month === 4 || (month === 5 && day < 21)) return 1;
+  if ((month === 5 && day >= 21) || month === 6 || (month === 7 && day < 23)) return 2;
+  if ((month === 7 && day >= 23) || month === 8 || (month === 9 && day < 23)) return 3;
   if ((month === 9 && day >= 23) || month === 10 || (month === 11 && day < 22)) return 4;
   return 5;
+}
+
+/**
+ * 根据日期判断当前处于哪一运
+ */
+export function getCurrentYun(date: Date = new Date()): number {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  
+  // 每运约73天
+  if ((month === 1 && day >= 20) || month === 2 || month === 3) return 0; // 初运
+  if (month === 4 || month === 5 || (month === 6 && day <= 12)) return 1; // 二运
+  if ((month === 6 && day >= 13) || month === 7 || (month === 8 && day <= 24)) return 2; // 三运
+  if ((month === 8 && day >= 25) || month === 9 || month === 10 || (month === 11 && day <= 6)) return 3; // 四运
+  return 4; // 五运
 }
 
 /**
@@ -225,13 +431,13 @@ export function getQiPeriodName(index: number): string {
  * 获取六气时段日期范围
  */
 export function getQiPeriodRange(index: number): string {
-  const ranges = [
-    '大寒 - 春分',
-    '春分 - 小满',
-    '小满 - 大暑',
-    '大暑 - 秋分',
-    '秋分 - 小雪',
-    '小雪 - 大寒',
-  ];
-  return ranges[index] || '';
+  return QI_PERIODS[index]?.dateRange || '';
+}
+
+/**
+ * 获取六气时段节气范围
+ */
+export function getQiJieQiRange(index: number): string {
+  const period = QI_PERIODS[index];
+  return period ? `${period.jieQiStart} - ${period.jieQiEnd}` : '';
 }
