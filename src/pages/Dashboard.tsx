@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Settings,
   Layers,
-  Wind
+  Wind,
+  BookMarked
 } from 'lucide-react';
 import WuYunChart from '@/components/WuYunChart';
 import LiuQiChart from '@/components/LiuQiChart';
@@ -518,6 +519,29 @@ export default function Dashboard() {
                 </Card>
               )}
             </div>
+
+            {/* 经典文献入口 */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow group border-accent/30 bg-gradient-to-r from-accent/5 to-transparent"
+              onClick={() => navigate('/classics')}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
+                    <BookMarked className="w-6 h-6 text-accent group-hover:text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-accent transition-colors">
+                      运气七篇经典
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      阅读《黄帝内经·素问》运气七篇原文及白话解
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 五运图 */}

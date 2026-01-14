@@ -2,6 +2,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Classics from "./pages/Classics";
 
 export const routers = [
     {
@@ -18,6 +19,11 @@ export const routers = [
       path: "/dashboard",
       name: 'dashboard',
       element: <Dashboard />,
+    },
+    {
+      path: "/classics",
+      name: 'classics',
+      element: <Classics />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {
