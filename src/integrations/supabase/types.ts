@@ -58,6 +58,8 @@ export type Database = {
           nickname: string | null
           region: string | null
           updated_at: string | null
+          wechat_openid: string | null
+          wechat_unionid: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -70,6 +72,8 @@ export type Database = {
           nickname?: string | null
           region?: string | null
           updated_at?: string | null
+          wechat_openid?: string | null
+          wechat_unionid?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -82,6 +86,8 @@ export type Database = {
           nickname?: string | null
           region?: string | null
           updated_at?: string | null
+          wechat_openid?: string | null
+          wechat_unionid?: string | null
         }
         Relationships: []
       }

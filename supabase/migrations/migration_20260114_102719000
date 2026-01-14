@@ -1,0 +1,8 @@
+
+-- 添加微信登录相关字段
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS wechat_openid TEXT UNIQUE,
+ADD COLUMN IF NOT EXISTS wechat_unionid TEXT;
+
+-- 创建索引提高查询性能
+CREATE INDEX IF NOT EXISTS idx_profiles_wechat_openid ON profiles(wechat_openid);
