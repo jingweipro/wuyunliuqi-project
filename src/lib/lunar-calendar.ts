@@ -1,5 +1,5 @@
 // 阴历转换工具
-import { Solar, Lunar } from 'lunar-javascript';
+import { Solar, Lunar, LunarYear } from 'lunar-javascript';
 
 export interface DateInfo {
   // 阳历
@@ -24,86 +24,155 @@ export interface DateInfo {
 
 // 阳历转阴历
 export function solarToLunar(year: number, month: number, day: number): DateInfo {
-  const solar = Solar.fromYmd(year, month, day);
-  const lunar = solar.getLunar();
-  
-  // 获取下一个节气
-  const jieQiTable = lunar.getJieQiTable();
-  let nextJieQi: { name: string; date: string } | null = null;
-  const jieQiNames = Object.keys(jieQiTable);
-  
-  for (const name of jieQiNames) {
-    const jqSolar = jieQiTable[name];
-    if (jqSolar && jqSolar.toYmd() > solar.toYmd()) {
-      nextJieQi = { name, date: jqSolar.toYmd() };
-      break;
+  try {
+    const solar = Solar.fromYmd(year, month, day);
+    const lunar = solar.getLunar();
+    
+    // 获取下一个节气
+    let nextJieQi: { name: string; date: string } | null = null;
+    try {
+      const jieQiTable = lunar.getJieQiTable();
+      const jieQiNames = Object.keys(jieQiTable);
+      
+      for (const name of jieQiNames) {
+        const jqSolar = jieQiTable[name];
+        if (jqSolar && jqSolar.toYmd() > solar.toYmd()) {
+          nextJieQi = { name, date: jqSolar.toYmd() };
+          break;
+        }
+      }
+    } catch (e) {
+      // ignore jieqi errors
     }
-  }
 
-  return {
-    solarYear: year,
-    solarMonth: month,
-    solarDay: day,
-    lunarYear: lunar.getYear(),
-    lunarMonth: lunar.getMonth(),
-    lunarDay: lunar.getDay(),
-    lunarMonthName: lunar.getMonthInChinese() + '月',
-    lunarDayName: lunar.getDayInChinese(),
-    isLeapMonth: lunar.getMonth() < 0,
-    ganZhiYear: lunar.getYearInGanZhi(),
-    ganZhiMonth: lunar.getMonthInGanZhi(),
-    ganZhiDay: lunar.getDayInGanZhi(),
-    jieQi: lunar.getJieQi(),
-    nextJieQi,
-  };
+    const lunarMonth = lunar.getMonth();
+    
+    return {
+      solarYear: year,
+      solarMonth: month,
+      solarDay: day,
+      lunarYear: lunar.getYear(),
+      lunarMonth: Math.abs(lunarMonth),
+      lunarDay: lunar.getDay(),
+      lunarMonthName: lunar.getMonthInChinese() + '月',
+      lunarDayName: lunar.getDayInChinese(),
+      isLeapMonth: lunarMonth < 0,
+      ganZhiYear: lunar.getYearInGanZhi(),
+      ganZhiMonth: lunar.getMonthInGanZhi(),
+      ganZhiDay: lunar.getDayInGanZhi(),
+      jieQi: lunar.getJieQi(),
+      nextJieQi,
+    };
+  } catch (e) {
+    console.error('solarToLunar error:', e);
+    // 返回默认值
+    return {
+      solarYear: year,
+      solarMonth: month,
+      solarDay: day,
+      lunarYear: year,
+      lunarMonth: month,
+      lunarDay: day,
+      lunarMonthName: `${month}月`,
+      lunarDayName: `${day}日`,
+      isLeapMonth: false,
+      ganZhiYear: '',
+      ganZhiMonth: '',
+      ganZhiDay: '',
+      jieQi: null,
+      nextJieQi: null,
+    };
+  }
 }
 
 // 阴历转阳历
 export function lunarToSolar(year: number, month: number, day: number, isLeapMonth: boolean = false): DateInfo {
-  const lunar = Lunar.fromYmd(year, isLeapMonth ? -month : month, day);
-  const solar = lunar.getSolar();
-  
-  // 获取下一个节气
-  const jieQiTable = lunar.getJieQiTable();
-  let nextJieQi: { name: string; date: string } | null = null;
-  const jieQiNames = Object.keys(jieQiTable);
-  
-  for (const name of jieQiNames) {
-    const jqSolar = jieQiTable[name];
-    if (jqSolar && jqSolar.toYmd() > solar.toYmd()) {
-      nextJieQi = { name, date: jqSolar.toYmd() };
-      break;
+  try {
+    const lunar = Lunar.fromYmd(year, isLeapMonth ? -month : month, day);
+    const solar = lunar.getSolar();
+    
+    // 获取下一个节气
+    let nextJieQi: { name: string; date: string } | null = null;
+    try {
+      const jieQiTable = lunar.getJieQiTable();
+      const jieQiNames = Object.keys(jieQiTable);
+      
+      for (const name of jieQiNames) {
+        const jqSolar = jieQiTable[name];
+        if (jqSolar && jqSolar.toYmd() > solar.toYmd()) {
+          nextJieQi = { name, date: jqSolar.toYmd() };
+          break;
+        }
+      }
+    } catch (e) {
+      // ignore jieqi errors
     }
-  }
 
-  return {
-    solarYear: solar.getYear(),
-    solarMonth: solar.getMonth(),
-    solarDay: solar.getDay(),
-    lunarYear: year,
-    lunarMonth: month,
-    lunarDay: day,
-    lunarMonthName: lunar.getMonthInChinese() + '月',
-    lunarDayName: lunar.getDayInChinese(),
-    isLeapMonth,
-    ganZhiYear: lunar.getYearInGanZhi(),
-    ganZhiMonth: lunar.getMonthInGanZhi(),
-    ganZhiDay: lunar.getDayInGanZhi(),
-    jieQi: lunar.getJieQi(),
-    nextJieQi,
-  };
+    return {
+      solarYear: solar.getYear(),
+      solarMonth: solar.getMonth(),
+      solarDay: solar.getDay(),
+      lunarYear: year,
+      lunarMonth: month,
+      lunarDay: day,
+      lunarMonthName: lunar.getMonthInChinese() + '月',
+      lunarDayName: lunar.getDayInChinese(),
+      isLeapMonth,
+      ganZhiYear: lunar.getYearInGanZhi(),
+      ganZhiMonth: lunar.getMonthInGanZhi(),
+      ganZhiDay: lunar.getDayInGanZhi(),
+      jieQi: lunar.getJieQi(),
+      nextJieQi,
+    };
+  } catch (e) {
+    console.error('lunarToSolar error:', e);
+    // 返回默认值
+    return {
+      solarYear: year,
+      solarMonth: month,
+      solarDay: day,
+      lunarYear: year,
+      lunarMonth: month,
+      lunarDay: day,
+      lunarMonthName: `${month}月`,
+      lunarDayName: `${day}日`,
+      isLeapMonth,
+      ganZhiYear: '',
+      ganZhiMonth: '',
+      ganZhiDay: '',
+      jieQi: null,
+      nextJieQi: null,
+    };
+  }
 }
 
-// 获取某年的闰月
+// 获取某年的闰月 (返回0表示无闰月)
 export function getLeapMonth(year: number): number {
-  const lunar = Lunar.fromYmd(year, 1, 1);
-  return lunar.getLeapMonth();
+  try {
+    const lunarYear = LunarYear.fromYear(year);
+    return lunarYear.getLeapMonth();
+  } catch (e) {
+    console.error('getLeapMonth error:', e);
+    return 0;
+  }
 }
 
 // 获取农历月份天数
 export function getLunarMonthDays(year: number, month: number, isLeapMonth: boolean = false): number {
-  const lunar = Lunar.fromYmd(year, isLeapMonth ? -month : month, 1);
-  return lunar.getMonthDays();
+  try {
+    const lunarYear = LunarYear.fromYear(year);
+    const months = lunarYear.getMonths();
+    
+    for (const m of months) {
+      if (m.getMonth() === month && m.isLeap() === isLeapMonth) {
+        return m.getDayCount();
+      }
+    }
+    return 30; // 默认30天
+  } catch (e) {
+    console.error('getLunarMonthDays error:', e);
+    return 30;
+  }
 }
 
 // 格式化阴历日期显示
@@ -113,8 +182,13 @@ export function formatLunarDate(lunarMonth: number, lunarDay: number, lunarMonth
 
 // 获取年份的干支
 export function getYearGanZhi(year: number): string {
-  const lunar = Lunar.fromYmd(year, 1, 1);
-  return lunar.getYearInGanZhi();
+  try {
+    const lunar = Lunar.fromYmd(year, 1, 1);
+    return lunar.getYearInGanZhi();
+  } catch (e) {
+    console.error('getYearGanZhi error:', e);
+    return '';
+  }
 }
 
 // 中文数字
