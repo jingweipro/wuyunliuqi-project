@@ -1,0 +1,41 @@
+
+-- 在profiles表添加管理员字段和最后登录时间
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0;
+
+-- 用户活动日志表
+CREATE TABLE IF NOT EXISTS user_activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  activity_type TEXT NOT NULL,
+  activity_data JSONB,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 启用 RLS
+ALTER TABLE user_activities ENABLE ROW LEVEL SECURITY;
+
+-- 管理员可以查看所有活动
+CREATE POLICY "Admins can view all activities" 
+  ON user_activities FOR SELECT 
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE profiles.id = auth.uid() 
+      AND profiles.is_admin = true
+    )
+  );
+
+-- 用户可以插入自己的活动
+CREATE POLICY "Users can insert own activities" 
+  ON user_activities FOR INSERT 
+  WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+-- 创建索引提高查询性能
+CREATE INDEX IF NOT EXISTS idx_user_activities_user_id ON user_activities(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_activities_created_at ON user_activities(created_at);
+CREATE INDEX IF NOT EXISTS idx_profiles_last_login ON profiles(last_login_at);

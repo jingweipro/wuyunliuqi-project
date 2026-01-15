@@ -54,7 +54,10 @@ export type Database = {
           birth_year: number | null
           created_at: string | null
           id: string
+          is_admin: boolean | null
           is_anonymous: boolean | null
+          last_login_at: string | null
+          login_count: number | null
           nickname: string | null
           region: string | null
           updated_at: string | null
@@ -68,7 +71,10 @@ export type Database = {
           birth_year?: number | null
           created_at?: string | null
           id: string
+          is_admin?: boolean | null
           is_anonymous?: boolean | null
+          last_login_at?: string | null
+          login_count?: number | null
           nickname?: string | null
           region?: string | null
           updated_at?: string | null
@@ -82,7 +88,10 @@ export type Database = {
           birth_year?: number | null
           created_at?: string | null
           id?: string
+          is_admin?: boolean | null
           is_anonymous?: boolean | null
+          last_login_at?: string | null
+          login_count?: number | null
           nickname?: string | null
           region?: string | null
           updated_at?: string | null
@@ -90,6 +99,44 @@ export type Database = {
           wechat_unionid?: string | null
         }
         Relationships: []
+      }
+      user_activities: {
+        Row: {
+          activity_data: Json | null
+          activity_type: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_data?: Json | null
+          activity_type: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_data?: Json | null
+          activity_type?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

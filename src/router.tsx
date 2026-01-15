@@ -4,6 +4,8 @@ import LoginPage from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Classics from "./pages/Classics";
 import HealthAdvice from "./pages/HealthAdvice";
+import ResetPassword from "./pages/ResetPassword";
+import Admin from "./pages/Admin";
 
 export const routers = [
     {
@@ -30,6 +32,16 @@ export const routers = [
       path: "/health-advice",
       name: 'health-advice',
       element: <HealthAdvice />,
+    },
+    {
+      path: "/reset-password",
+      name: 'reset-password',
+      element: <ResetPassword />,
+    },
+    {
+      path: "/admin",
+      name: 'admin',
+      element: <Admin />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {

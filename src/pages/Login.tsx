@@ -6,11 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Calendar, MapPin, Eye, Mail, Lock, Loader2, QrCode, RefreshCw } from 'lucide-react';
+import { User, Calendar, MapPin, Eye, Mail, Lock, Loader2, QrCode, RefreshCw, KeyRound } from 'lucide-react';
 
 // 省份列表
 const PROVINCES = [
@@ -36,6 +36,12 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   
+  // 忘记密码状态
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  
   // 微信登录状态
   const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
   const [wechatQrUrl, setWechatQrUrl] = useState<string>('');
@@ -59,7 +65,6 @@ export default function LoginPage() {
       if (error) throw error;
 
       if (data.success && data.magicLink) {
-        // 使用 magic link 登录
         const url = new URL(data.magicLink);
         const token = url.searchParams.get('token');
         const type = url.searchParams.get('type');
@@ -90,13 +95,12 @@ export default function LoginPage() {
     }
   }, [navigate, toast]);
 
-  // 检查URL中是否有微信回调的code
+  // 检查URL中是否有微信回调的code或重置密码的token
   useEffect(() => {
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     
     if (code && state) {
-      // 验证state
       const savedState = sessionStorage.getItem('wechat_state');
       if (state === savedState) {
         sessionStorage.removeItem('wechat_state');
@@ -119,10 +123,7 @@ export default function LoginPage() {
         body: { action: 'get-qr-url', redirectUri, state },
       });
 
-      console.log('WeChat QR response:', { data, error });
-
       if (error) {
-        console.error('WeChat function error:', error);
         throw new Error(error.message || '调用服务失败');
       }
 
@@ -191,13 +192,35 @@ export default function LoginPage() {
         toast({ title: '注册成功', description: '欢迎使用五运六气系统' });
       } else {
         await signInWithEmail(email, password);
+        
+        // 记录登录活动
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('user_activities').insert({
+              user_id: user.id,
+              activity_type: 'login',
+              activity_data: { method: 'email' },
+              user_agent: navigator.userAgent,
+            });
+            
+            // 更新最后登录时间
+            await supabase.from('profiles').update({
+              last_login_at: new Date().toISOString(),
+              login_count: supabase.rpc('increment_login_count', { user_id: user.id })
+            }).eq('id', user.id);
+          }
+        } catch (e) {
+          console.log('Activity logging failed:', e);
+        }
+        
         toast({ title: '登录成功', description: '欢迎回来' });
       }
       navigate('/dashboard');
     } catch (error) {
       toast({ 
         title: isSignUp ? '注册失败' : '登录失败', 
-        description: error instanceof Error ? error.message : '请稍后重试',
+        description: error instanceof Error ? error.message : '请检查邮箱或密码',
         variant: 'destructive'
       });
     } finally {
@@ -205,124 +228,119 @@ export default function LoginPage() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-primary-900 flex items-center justify-center">
-            <span className="text-2xl font-serif text-primary-foreground">运</span>
-          </div>
-          <p className="text-muted-foreground">正在加载...</p>
-        </div>
-      </div>
-    );
-  }
+  // 发送密码重置邮件
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      toast({ title: '请输入邮箱地址', variant: 'destructive' });
+      return;
+    }
+    
+    setResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      
+      setResetSent(true);
+      toast({ 
+        title: '邮件已发送', 
+        description: '请查收邮箱中的密码重置链接' 
+      });
+    } catch (error) {
+      toast({ 
+        title: '发送失败', 
+        description: error instanceof Error ? error.message : '请稍后重试',
+        variant: 'destructive'
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // 关闭忘记密码弹窗时重置状态
+  const handleCloseForgotPassword = () => {
+    setForgotPasswordOpen(false);
+    setResetEmail('');
+    setResetSent(false);
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-secondary/30">
-      {/* Background Decoration */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-primary/5 animate-float" style={{ animationDelay: '0s' }} />
-        <div className="absolute top-40 right-20 w-24 h-24 rounded-full bg-accent/10 animate-float" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-20 left-1/4 w-40 h-40 rounded-full bg-element-wood/5 animate-float" style={{ animationDelay: '2s' }} />
-      </div>
-
-      <Card className="w-full max-w-md relative z-10 shadow-lg border-primary/10">
+    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          {/* Logo */}
-          <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-900 flex items-center justify-center animate-pulse-glow">
+          <div className="mx-auto w-20 h-20 rounded-full bg-primary flex items-center justify-center">
             <span className="text-3xl font-serif text-primary-foreground">运</span>
           </div>
-          <div>
-            <CardTitle className="text-2xl font-serif text-foreground">五运六气</CardTitle>
-            <CardDescription className="mt-2 text-muted-foreground">
-              探索中医天人合一的智慧
-            </CardDescription>
-          </div>
+          <CardTitle className="font-serif text-2xl">五运六气</CardTitle>
+          <CardDescription>探索中医天人合一的智慧</CardDescription>
         </CardHeader>
-
+        
         <CardContent>
           <Tabs defaultValue="email" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="email" className="flex items-center gap-1">
                 <Mail className="w-4 h-4" />
-                <span className="hidden sm:inline">邮箱</span>
+                邮箱
               </TabsTrigger>
               <TabsTrigger value="wechat" className="flex items-center gap-1">
                 <QrCode className="w-4 h-4" />
-                <span className="hidden sm:inline">微信</span>
+                微信
               </TabsTrigger>
               <TabsTrigger value="anonymous" className="flex items-center gap-1">
                 <Eye className="w-4 h-4" />
-                <span className="hidden sm:inline">匿名</span>
+                匿名
               </TabsTrigger>
             </TabsList>
 
             {/* 邮箱登录 */}
-            <TabsContent value="email" className="space-y-4">
-              <div className="flex justify-center gap-4 text-sm">
-                <button 
-                  onClick={() => setIsSignUp(false)}
-                  className={`pb-1 border-b-2 transition-colors ${!isSignUp ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
-                >
-                  登录
-                </button>
-                <button 
-                  onClick={() => setIsSignUp(true)}
-                  className={`pb-1 border-b-2 transition-colors ${isSignUp ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
-                >
-                  注册
-                </button>
-              </div>
-
+            <TabsContent value="email" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  邮箱 <span className="text-primary">*</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="请输入邮箱"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <Label>邮箱地址</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input 
+                    type="email" 
+                    placeholder="请输入邮箱"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
-
+              
               <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  密码 <span className="text-primary">*</span>
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="请输入密码"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <Label>密码</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input 
+                    type="password" 
+                    placeholder="请输入密码"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
 
               {isSignUp && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="nickname" className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      昵称 (可选)
-                    </Label>
-                    <Input
-                      id="nickname"
-                      placeholder="请输入您的昵称"
-                      value={nickname}
-                      onChange={(e) => setNickname(e.target.value)}
-                    />
+                    <Label>昵称 (选填)</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="请输入昵称"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      出生日期 (可选)
-                    </Label>
+                    <Label>出生日期 (选填)</Label>
                     <div className="grid grid-cols-3 gap-2">
                       <Select value={birthYear} onValueChange={setBirthYear}>
                         <SelectTrigger>
@@ -366,104 +384,103 @@ export default function LoginPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      所在地区 (可选)
-                    </Label>
-                    <Select value={region} onValueChange={setRegion}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择地区" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {PROVINCES.map((province) => (
-                          <SelectItem key={province} value={province}>
-                            {province}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>所在地区 (选填)</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Select value={region} onValueChange={setRegion}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="请选择地区" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {PROVINCES.map((province) => (
+                            <SelectItem key={province} value={province}>
+                              {province}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </>
               )}
 
-              <Button
-                className="w-full mt-6"
+              <Button 
+                className="w-full" 
                 onClick={handleEmailAuth}
-                disabled={!email || !password || isLoading}
+                disabled={isLoading || authLoading}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    处理中...
-                  </>
-                ) : (
-                  isSignUp ? '注册并进入' : '登录'
-                )}
+                {(isLoading || authLoading) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {isSignUp ? '注册' : '登录'}
               </Button>
+
+              <div className="flex items-center justify-between text-sm">
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto text-muted-foreground"
+                  onClick={() => setIsSignUp(!isSignUp)}
+                >
+                  {isSignUp ? '已有账号？登录' : '没有账号？注册'}
+                </Button>
+                
+                {!isSignUp && (
+                  <Button 
+                    variant="link" 
+                    className="p-0 h-auto text-muted-foreground"
+                    onClick={() => setForgotPasswordOpen(true)}
+                  >
+                    忘记密码？
+                  </Button>
+                )}
+              </div>
             </TabsContent>
 
             {/* 微信登录 */}
-            <TabsContent value="wechat" className="space-y-6">
-              <div className="text-center py-6">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-[#07C160]/10 flex items-center justify-center">
-                  <svg className="w-12 h-12 text-[#07C160]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.032zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z" />
+            <TabsContent value="wechat" className="space-y-4 mt-4">
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" className="w-12 h-12 text-green-500" fill="currentColor">
+                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
                   </svg>
                 </div>
-                <h3 className="font-serif text-lg text-foreground mb-2">微信扫码登录</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  使用微信扫描二维码，安全快捷登录
-                </p>
+                <h3 className="font-medium text-lg">微信扫码登录</h3>
+                <p className="text-sm text-muted-foreground">使用微信扫描二维码，安全快捷登录</p>
                 
-                <Button
-                  className="bg-[#07C160] hover:bg-[#06AD56] text-white"
+                <Button 
                   onClick={generateWechatQr}
                   disabled={wechatLoading}
+                  className="bg-green-500 hover:bg-green-600 text-white"
                 >
                   {wechatLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      获取二维码...
-                    </>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <>
-                      <QrCode className="w-4 h-4 mr-2" />
-                      获取登录二维码
-                    </>
+                    <QrCode className="w-4 h-4 mr-2" />
                   )}
+                  获取登录二维码
                 </Button>
               </div>
             </TabsContent>
 
             {/* 匿名登录 */}
-            <TabsContent value="anonymous" className="space-y-6">
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                  <Eye className="w-8 h-8 text-muted-foreground" />
+            <TabsContent value="anonymous" className="space-y-4 mt-4">
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
+                  <Eye className="w-10 h-10 text-muted-foreground" />
                 </div>
-                <h3 className="font-serif text-lg text-foreground mb-2">匿名访问模式</h3>
+                <h3 className="font-medium text-lg">匿名访问</h3>
                 <p className="text-sm text-muted-foreground">
-                  无需提供个人信息，直接浏览五运六气年历。
-                  <br />
-                  您可以随时在系统内完善个人信息查看个人排盘。
+                  无需注册，直接体验五运六气系统。您可以随时在个人中心完善信息。
                 </p>
+                
+                <Button 
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleAnonymousLogin}
+                  disabled={isLoading || authLoading}
+                >
+                  {(isLoading || authLoading) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  匿名进入
+                </Button>
               </div>
-
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={handleAnonymousLogin}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    正在进入...
-                  </>
-                ) : (
-                  '匿名进入'
-                )}
-              </Button>
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -473,47 +490,92 @@ export default function LoginPage() {
       <Dialog open={wechatDialogOpen} onOpenChange={setWechatDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center font-serif flex items-center justify-center gap-2">
-              <svg className="w-6 h-6 text-[#07C160]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18z" />
-              </svg>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="w-5 h-5" />
               微信扫码登录
             </DialogTitle>
+            <DialogDescription>
+              请使用微信扫描下方二维码
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            {wechatQrUrl && (
+              <iframe 
+                src={wechatQrUrl}
+                className="w-[300px] h-[400px] border-0"
+                title="微信登录二维码"
+              />
+            )}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={generateWechatQr}
+              disabled={wechatLoading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${wechatLoading ? 'animate-spin' : ''}`} />
+              刷新二维码
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 忘记密码弹窗 */}
+      <Dialog open={forgotPasswordOpen} onOpenChange={handleCloseForgotPassword}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5" />
+              找回密码
+            </DialogTitle>
+            <DialogDescription>
+              {resetSent 
+                ? '密码重置邮件已发送，请查收您的邮箱'
+                : '输入您的注册邮箱，我们将发送密码重置链接'
+              }
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="flex flex-col items-center py-6">
-            {wechatQrUrl ? (
-              <>
-                <div className="w-64 h-64 bg-white p-2 rounded-lg shadow-inner mb-4">
-                  <iframe
-                    src={wechatQrUrl}
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    scrolling="no"
-                    className="rounded"
-                    title="微信登录二维码"
+          {!resetSent ? (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>邮箱地址</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input 
+                    type="email" 
+                    placeholder="请输入注册邮箱"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="pl-10"
                   />
                 </div>
-                <p className="text-sm text-muted-foreground text-center mb-4">
-                  请使用微信扫描上方二维码
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={generateWechatQr}
-                  disabled={wechatLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${wechatLoading ? 'animate-spin' : ''}`} />
-                  刷新二维码
-                </Button>
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
-            )}
-          </div>
+              
+              <Button 
+                className="w-full" 
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+              >
+                {resetLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                发送重置链接
+              </Button>
+            </div>
+          ) : (
+            <div className="py-6 text-center space-y-4">
+              <div className="mx-auto w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                <Mail className="w-8 h-8 text-green-500" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                重置链接已发送至 <span className="font-medium text-foreground">{resetEmail}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                如果没有收到邮件，请检查垃圾邮件文件夹
+              </p>
+              <Button variant="outline" onClick={handleCloseForgotPassword}>
+                返回登录
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

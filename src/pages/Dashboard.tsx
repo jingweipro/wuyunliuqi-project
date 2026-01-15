@@ -24,7 +24,8 @@ import {
   Layers,
   Wind,
   BookMarked,
-  Heart
+  Heart,
+  Shield
 } from 'lucide-react';
 import WuYunChart from '@/components/WuYunChart';
 import LiuQiChart from '@/components/LiuQiChart';
@@ -229,6 +230,13 @@ export default function Dashboard() {
                 </div>
               </DialogContent>
             </Dialog>
+            
+            {/* 管理员入口 */}
+            {profile?.is_admin && (
+              <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
+                <Shield className="w-4 h-4" />
+              </Button>
+            )}
             
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
