@@ -119,6 +119,9 @@ dependencies:
   lucide-react:
     specifier: ^0.542.0
     version: 0.542.0(react@19.1.1)
+  lunar-javascript:
+    specifier: ^1.7.7
+    version: 1.7.7
   next-themes:
     specifier: ^0.4.6
     version: 0.4.6(react-dom@19.1.1)(react@19.1.1)
@@ -3848,6 +3851,10 @@ packages:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
     dependencies:
       react: 19.1.1
+    dev: false
+
+  /lunar-javascript@1.7.7:
+    resolution: {integrity: sha512-u/KYiwPIBo/0bT+WWfU7qO1d+aqeB90Tuy4ErXenr2Gam0QcWeezUvtiOIyXR7HbVnW2I1DKfU0NBvzMZhbVQw==}
     dev: false
 
   /magic-string@0.30.21:

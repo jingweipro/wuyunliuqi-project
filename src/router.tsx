@@ -3,6 +3,7 @@ import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Classics from "./pages/Classics";
+import HealthAdvice from "./pages/HealthAdvice";
 
 export const routers = [
     {
@@ -24,6 +25,11 @@ export const routers = [
       path: "/classics",
       name: 'classics',
       element: <Classics />,
+    },
+    {
+      path: "/health-advice",
+      name: 'health-advice',
+      element: <HealthAdvice />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {

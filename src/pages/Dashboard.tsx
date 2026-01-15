@@ -23,12 +23,14 @@ import {
   Settings,
   Layers,
   Wind,
-  BookMarked
+  BookMarked,
+  Heart
 } from 'lucide-react';
 import WuYunChart from '@/components/WuYunChart';
 import LiuQiChart from '@/components/LiuQiChart';
 import KeZhuJiaLinCard from '@/components/KeZhuJiaLinCard';
 import KnowledgeSection from '@/components/KnowledgeSection';
+import LunarDatePicker from '@/components/LunarDatePicker';
 
 // 省份列表
 const PROVINCES = [
@@ -188,47 +190,17 @@ export default function Dashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>出生日期</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Select value={editBirthYear} onValueChange={setEditBirthYear}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="年" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {years.slice(50).map((year) => (
-                            <SelectItem key={year} value={year.toString()}>
-                              {year}年
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={editBirthMonth} onValueChange={setEditBirthMonth}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="月" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {months.map((month) => (
-                            <SelectItem key={month} value={month.toString()}>
-                              {month}月
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={editBirthDay} onValueChange={setEditBirthDay}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="日" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {days.map((day) => (
-                            <SelectItem key={day} value={day.toString()}>
-                              {day}日
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Label>出生日期（支持阳历/阴历切换）</Label>
+                    <LunarDatePicker
+                      solarYear={editBirthYear ? parseInt(editBirthYear) : undefined}
+                      solarMonth={editBirthMonth ? parseInt(editBirthMonth) : undefined}
+                      solarDay={editBirthDay ? parseInt(editBirthDay) : undefined}
+                      onChange={(data) => {
+                        setEditBirthYear(data.solarYear.toString());
+                        setEditBirthMonth(data.solarMonth.toString());
+                        setEditBirthDay(data.solarDay.toString());
+                      }}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -542,6 +514,31 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* 个人健康建议入口 */}
+            {profile?.birth_year && (
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-shadow group border-primary/30 bg-gradient-to-r from-primary/5 to-transparent"
+                onClick={() => navigate(`/health-advice?year=${selectedYear}`)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <Heart className="w-6 h-6 text-primary group-hover:text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                        个人健康建议
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        根据您的出生年份，获取{selectedYear}年个性化养生建议与三因司天方
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* 五运图 */}
