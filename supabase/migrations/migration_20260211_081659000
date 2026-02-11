@@ -1,0 +1,5 @@
+
+-- 设置最新注册的用户为管理员
+UPDATE profiles 
+SET is_admin = true 
+WHERE id = '76c99313-f7db-4aa7-b5ee-2a2670abd8f1';
