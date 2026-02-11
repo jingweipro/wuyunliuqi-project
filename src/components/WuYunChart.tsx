@@ -65,6 +65,7 @@ export default function WuYunChart({ yearInfo, currentQiIndex }: WuYunChartProps
 
   // 计算客运顺序
   const keYunOrder = useMemo(() => {
+    if (!yearInfo) return ZHU_YUN_ORDER;
     const startXing = yearInfo.wuXing;
     const startIndex = ZHU_YUN_ORDER.indexOf(startXing);
     const order: string[] = [];
@@ -72,13 +73,13 @@ export default function WuYunChart({ yearInfo, currentQiIndex }: WuYunChartProps
       order.push(ZHU_YUN_ORDER[(startIndex + i) % 5]);
     }
     return order;
-  }, [yearInfo.wuXing]);
+  }, [yearInfo]);
 
   // 获取客运名称（太/少）
   const getKeYunName = (xing: string, index: number) => {
     const yinName = KE_YUN_NAMES[xing];
     // 根据太过不及判断太/少
-    const isTaiGuo = yearInfo.taiGuoBuJi === '太过';
+    const isTaiGuo = yearInfo?.taiGuoBuJi === '太过';
     // 奇数位为太，偶数位为少（或相反）
     const isTai = isTaiGuo ? (index % 2 === 0) : (index % 2 === 1);
     return isTai ? `太${yinName}` : `少${yinName}`;
@@ -134,6 +135,15 @@ export default function WuYunChart({ yearInfo, currentQiIndex }: WuYunChartProps
     if ((month === 9 && day >= 23) || month === 10 || month === 11 || (month === 12 && day < 22)) return 4;
     return 0;
   }, []);
+
+  // 空值检查（放在所有hooks之后）
+  if (!yearInfo) {
+    return (
+      <div className="w-full flex items-center justify-center py-20">
+        <div className="text-muted-foreground">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col items-center">

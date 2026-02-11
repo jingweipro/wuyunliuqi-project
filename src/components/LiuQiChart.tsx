@@ -69,6 +69,7 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
 
   // 计算客气顺序（以司天为三之气）
   const keQiOrder = useMemo(() => {
+    if (!yearInfo) return ZHU_QI_ORDER;
     const siTianIndex = ZHU_QI_ORDER.indexOf(yearInfo.siTian);
     const order: string[] = [];
     // 三之气是司天，往前推2位得到初之气
@@ -77,7 +78,7 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
       order.push(ZHU_QI_ORDER[(startIndex + i) % 6]);
     }
     return order;
-  }, [yearInfo.siTian]);
+  }, [yearInfo]);
 
   // 计算客主关系
   const getKeZhuRelation = (zhuQi: string, keQi: string) => {
@@ -119,6 +120,15 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
       'Z'
     ].join(' ');
   };
+
+  // 空值检查（放在所有hooks之后）
+  if (!yearInfo) {
+    return (
+      <div className="w-full flex items-center justify-center py-20">
+        <div className="text-muted-foreground">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col items-center">
