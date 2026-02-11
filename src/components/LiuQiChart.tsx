@@ -1,443 +1,413 @@
 import { useMemo } from 'react';
-import { 
-  WU_XING_ATTRIBUTES, 
-  LIU_QI_ATTRIBUTES, 
-  LIU_QI_ORDER,
-  QI_PERIODS,
-  getCurrentQi,
-  type LiuQi 
-} from '@/lib/wuyun-liuqi';
+import { YearInfo, LIU_QI, getCurrentQi } from '@/lib/wuyun-liuqi';
 
-interface Props {
-  year: number;
-  ganZhi: string;
-  siTian: LiuQi;
-  zaiQuan: LiuQi;
-  zhuQi: LiuQi[];
-  keQi: LiuQi[];
+interface LiuQiChartProps {
+  yearInfo: YearInfo;
 }
 
-const QI_NAMES = ['初之气', '二之气', '三之气', '四之气', '五之气', '终之气'];
+// 六气颜色
+const LIU_QI_COLORS: Record<string, { bg: string; text: string }> = {
+  '厥阴风木': { bg: '#A8D8B9', text: '#1a5c3a' },
+  '少阴君火': { bg: '#F5B7B1', text: '#922b21' },
+  '少阳相火': { bg: '#FADBD8', text: '#943126' },
+  '太阴湿土': { bg: '#F9E79F', text: '#7d6608' },
+  '阳明燥金': { bg: '#F5CBA7', text: '#935116' },
+  '太阳寒水': { bg: '#AED6F1', text: '#1a5276' },
+};
 
-export default function LiuQiChart({ year, ganZhi, siTian, zaiQuan, zhuQi, keQi }: Props) {
-  const size = 420;
+// 主气固定顺序
+const ZHU_QI_ORDER = ['厥阴风木', '少阴君火', '少阳相火', '太阴湿土', '阳明燥金', '太阳寒水'];
+
+// 六气简称
+const QI_SHORT_NAMES: Record<string, string> = {
+  '厥阴风木': '厥阴风木',
+  '少阴君火': '少阴君火',
+  '少阳相火': '少阳相火',
+  '太阴湿土': '太阴湿土',
+  '阳明燥金': '阳明燥金',
+  '太阳寒水': '太阳寒水',
+};
+
+// 24节气对应六气时段
+const QI_JIE_QI = [
+  { name: '大寒', date: '01/20' },
+  { name: '立春', date: '02/04' },
+  { name: '雨水', date: '02/19' },
+  { name: '惊蛰', date: '03/06' },
+  { name: '春分', date: '03/20' },
+  { name: '清明', date: '04/05' },
+  { name: '谷雨', date: '04/20' },
+  { name: '立夏', date: '05/06' },
+  { name: '小满', date: '05/20' },
+  { name: '芒种', date: '06/06' },
+  { name: '夏至', date: '06/21' },
+  { name: '小暑', date: '07/07' },
+  { name: '大暑', date: '07/22' },
+  { name: '立秋', date: '08/08' },
+  { name: '处暑', date: '08/23' },
+  { name: '白露', date: '09/08' },
+  { name: '秋分', date: '09/22' },
+  { name: '寒露', date: '10/08' },
+  { name: '霜降', date: '10/24' },
+  { name: '立冬', date: '11/08' },
+  { name: '小雪', date: '11/22' },
+  { name: '大雪', date: '12/07' },
+  { name: '冬至', date: '12/22' },
+  { name: '小寒', date: '01/06' },
+];
+
+// 每气起始节气索引
+const QI_START_JIEQI = [0, 4, 8, 12, 16, 20];
+
+export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
+  const size = 400;
   const center = size / 2;
-  const outerRadius = size / 2 - 15;
-  const jieQiRadius = outerRadius - 28;
-  const qiNameRadius = jieQiRadius - 22;
-  const zhuQiRadius = qiNameRadius - 28;
-  const keQiRadius = zhuQiRadius - 32;
-  const centerRadius = 50;
+  const outerRadius = 170;
+  const middleRadius = 130;
+  const innerRadius = 85;
+  const centerRadius = 45;
 
-  const currentQiIndex = getCurrentQi();
+  // 计算客气顺序（以司天为三之气）
+  const keQiOrder = useMemo(() => {
+    const siTianIndex = ZHU_QI_ORDER.indexOf(yearInfo.siTian);
+    const order: string[] = [];
+    // 三之气是司天，往前推2位得到初之气
+    const startIndex = (siTianIndex - 2 + 6) % 6;
+    for (let i = 0; i < 6; i++) {
+      order.push(ZHU_QI_ORDER[(startIndex + i) % 6]);
+    }
+    return order;
+  }, [yearInfo.siTian]);
 
-  // 六气时段节气标记
-  const jieQiMarks = useMemo(() => {
-    return QI_PERIODS.map((period, index) => {
-      const startAngle = index * 60 - 90;
-      const endAngle = (index + 1) * 60 - 90;
-      const midAngle = ((startAngle + endAngle) / 2) * (Math.PI / 180);
-      
-      // 起始节气位置
-      const startRad = startAngle * (Math.PI / 180);
-      const startX = center + (outerRadius - 14) * Math.cos(startRad);
-      const startY = center + (outerRadius - 14) * Math.sin(startRad);
-      
-      // 中间位置（用于显示时段名称）
-      const midX = center + qiNameRadius * Math.cos(midAngle);
-      const midY = center + qiNameRadius * Math.sin(midAngle);
-      
-      return {
-        ...period,
-        index,
-        startAngle,
-        endAngle,
-        startX,
-        startY,
-        midX,
-        midY,
-        isCurrent: index === currentQiIndex,
-      };
-    });
-  }, [center, outerRadius, qiNameRadius, currentQiIndex]);
+  // 计算客主关系
+  const getKeZhuRelation = (zhuQi: string, keQi: string) => {
+    if (zhuQi === keQi) return { text: '相得', type: 'same' };
+    
+    // 简化的相生相克判断
+    const zhuIndex = ZHU_QI_ORDER.indexOf(zhuQi);
+    const keIndex = ZHU_QI_ORDER.indexOf(keQi);
+    const diff = (keIndex - zhuIndex + 6) % 6;
+    
+    if (diff === 1 || diff === 2) return { text: '顺', type: 'shun' };
+    return { text: '逆', type: 'ni' };
+  };
 
-  // 主气扇区
-  const zhuQiSectors = useMemo(() => {
-    return zhuQi.map((qi, index) => {
-      const startAngle = index * 60 - 90;
-      const endAngle = (index + 1) * 60 - 90;
-      const midAngle = ((startAngle + endAngle) / 2) * (Math.PI / 180);
-      
-      const element = LIU_QI_ATTRIBUTES[qi].element;
-      const color = WU_XING_ATTRIBUTES[element].color;
-      
-      const labelRadius = (zhuQiRadius + keQiRadius) / 2 + 8;
-      const labelX = center + labelRadius * Math.cos(midAngle);
-      const labelY = center + labelRadius * Math.sin(midAngle);
-      
-      const isSiTian = qi === siTian && index === 2;
-      const isZaiQuan = qi === zaiQuan && index === 5;
-      
-      return {
-        qi,
-        index,
-        element,
-        color,
-        labelX,
-        labelY,
-        isSiTian,
-        isZaiQuan,
-        isCurrent: index === currentQiIndex,
-        path: describeArc(center, center, zhuQiRadius, keQiRadius, startAngle, endAngle),
-      };
-    });
-  }, [center, zhuQiRadius, keQiRadius, zhuQi, siTian, zaiQuan, currentQiIndex]);
+  // 获取当前气
+  const currentQiInfo = getCurrentQi();
+  const currentQiIndex = currentQiInfo.index;
 
-  // 客气扇区
-  const keQiSectors = useMemo(() => {
-    return keQi.map((qi, index) => {
-      const startAngle = index * 60 - 90;
-      const endAngle = (index + 1) * 60 - 90;
-      const midAngle = ((startAngle + endAngle) / 2) * (Math.PI / 180);
-      
-      const element = LIU_QI_ATTRIBUTES[qi].element;
-      const color = WU_XING_ATTRIBUTES[element].color;
-      
-      const labelRadius = (keQiRadius + centerRadius) / 2 + 10;
-      const labelX = center + labelRadius * Math.cos(midAngle);
-      const labelY = center + labelRadius * Math.sin(midAngle);
-      
-      const isSiTian = index === 2; // 三之气为司天
-      const isZaiQuan = index === 5; // 终之气为在泉
-      
-      return {
-        qi,
-        index,
-        element,
-        color,
-        labelX,
-        labelY,
-        isSiTian,
-        isZaiQuan,
-        path: describeArc(center, center, keQiRadius, centerRadius + 15, startAngle, endAngle),
-      };
-    });
-  }, [center, keQiRadius, centerRadius, keQi]);
+  const polarToCartesian = (cx: number, cy: number, r: number, angle: number) => {
+    const radian = (angle - 90) * Math.PI / 180;
+    return {
+      x: cx + r * Math.cos(radian),
+      y: cy + r * Math.sin(radian)
+    };
+  };
+
+  const describeSector = (cx: number, cy: number, innerR: number, outerR: number, startAngle: number, endAngle: number) => {
+    const innerStart = polarToCartesian(cx, cy, innerR, endAngle);
+    const innerEnd = polarToCartesian(cx, cy, innerR, startAngle);
+    const outerStart = polarToCartesian(cx, cy, outerR, endAngle);
+    const outerEnd = polarToCartesian(cx, cy, outerR, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+    
+    return [
+      'M', outerStart.x, outerStart.y,
+      'A', outerR, outerR, 0, largeArcFlag, 0, outerEnd.x, outerEnd.y,
+      'L', innerEnd.x, innerEnd.y,
+      'A', innerR, innerR, 0, largeArcFlag, 1, innerStart.x, innerStart.y,
+      'Z'
+    ].join(' ');
+  };
 
   return (
-    <div className="flex flex-col items-center">
-      <h3 className="font-serif text-lg mb-4 text-foreground">六气图</h3>
-      
-      <svg 
-        width={size} 
-        height={size} 
-        viewBox={`0 0 ${size} ${size}`}
-        className="max-w-full h-auto"
-      >
-        <defs>
-          <filter id="liuqi-glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          
-          {/* 司天标记渐变 */}
-          <linearGradient id="sitian-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
-          </linearGradient>
-          
-          {/* 在泉标记渐变 */}
-          <linearGradient id="zaiquan-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.4" />
-          </linearGradient>
-        </defs>
-
-        {/* 外圈 */}
-        <circle
-          cx={center}
-          cy={center}
-          r={outerRadius}
-          fill="none"
-          stroke="hsl(var(--border))"
-          strokeWidth="1"
-        />
-
-        {/* 六气时段分隔线和节气标记 */}
-        {jieQiMarks.map((mark) => {
-          const rad = mark.startAngle * (Math.PI / 180);
-          const x1 = center + outerRadius * Math.cos(rad);
-          const y1 = center + outerRadius * Math.sin(rad);
-          const x2 = center + (centerRadius + 15) * Math.cos(rad);
-          const y2 = center + (centerRadius + 15) * Math.sin(rad);
-          
-          return (
-            <g key={mark.index}>
-              {/* 分隔线 */}
-              <line
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke="hsl(var(--border))"
-                strokeWidth="1"
-              />
-              
-              {/* 起始节气 */}
-              <text
-                x={mark.startX}
-                y={mark.startY}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="fill-muted-foreground"
-                style={{ fontSize: '9px' }}
-              >
-                {mark.jieQiStart}
-              </text>
-              
-              {/* 时段名称（初之气 - 终之气） */}
-              <text
-                x={mark.midX}
-                y={mark.midY}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className={`font-serif ${mark.isCurrent ? 'fill-primary font-medium' : 'fill-foreground'}`}
-                style={{ fontSize: mark.isCurrent ? '11px' : '10px' }}
-              >
-                {mark.name}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* 时段名称圈 */}
-        <circle
-          cx={center}
-          cy={center}
-          r={qiNameRadius}
-          fill="none"
-          stroke="hsl(var(--border))"
-          strokeWidth="1"
-          strokeDasharray="3,3"
-        />
-
-        {/* 主气圈 */}
-        <circle
-          cx={center}
-          cy={center}
-          r={zhuQiRadius}
-          fill="hsl(var(--card))"
-          stroke="hsl(var(--border))"
-          strokeWidth="1"
-        />
-
-        {/* 主气扇区 */}
-        {zhuQiSectors.map((sector) => (
-          <g key={`zhu-${sector.index}`}>
-            <path
-              d={sector.path}
-              fill={sector.color}
-              fillOpacity={sector.isCurrent ? 0.9 : 0.6}
-              stroke={sector.color}
-              strokeWidth={sector.isCurrent ? 3 : 1}
-              style={{ filter: sector.isCurrent ? 'url(#liuqi-glow)' : undefined }}
-            />
-            
-            {/* 主气名称 */}
-            <text
-              x={sector.labelX}
-              y={sector.labelY - 7}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="font-serif"
-              style={{ 
-                fontSize: '9px',
-                fill: sector.element === '金' ? '#333' : '#fff'
-              }}
-            >
-              {sector.qi.slice(0, 2)}
-            </text>
-            <text
-              x={sector.labelX}
-              y={sector.labelY + 5}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              style={{ 
-                fontSize: '8px',
-                fill: sector.element === '金' ? '#555' : 'rgba(255,255,255,0.8)'
-              }}
-            >
-              主气
-            </text>
-          </g>
-        ))}
-
-        {/* 客气圈 */}
-        <circle
-          cx={center}
-          cy={center}
-          r={keQiRadius}
-          fill="hsl(var(--background))"
-          stroke="hsl(var(--border))"
-          strokeWidth="1"
-        />
-
-        {/* 客气扇区 */}
-        {keQiSectors.map((sector) => (
-          <g key={`ke-${sector.index}`}>
-            <path
-              d={sector.path}
-              fill={sector.color}
-              fillOpacity={sector.isSiTian || sector.isZaiQuan ? 0.8 : 0.5}
-              stroke={sector.isSiTian ? 'hsl(var(--primary))' : sector.isZaiQuan ? 'hsl(var(--accent))' : sector.color}
-              strokeWidth={sector.isSiTian || sector.isZaiQuan ? 2 : 1}
-            />
-            
-            {/* 客气名称 */}
-            <text
-              x={sector.labelX}
-              y={sector.labelY - 8}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="font-serif"
-              style={{ 
-                fontSize: '9px',
-                fill: sector.element === '金' ? '#333' : '#fff'
-              }}
-            >
-              {sector.qi.slice(0, 2)}
-            </text>
-            
-            {/* 司天/在泉标记 */}
-            {sector.isSiTian && (
-              <text
-                x={sector.labelX}
-                y={sector.labelY + 5}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="font-medium"
-                style={{ fontSize: '8px', fill: 'hsl(var(--primary))' }}
-              >
-                司天
-              </text>
-            )}
-            {sector.isZaiQuan && (
-              <text
-                x={sector.labelX}
-                y={sector.labelY + 5}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="font-medium"
-                style={{ fontSize: '8px', fill: 'hsl(var(--accent))' }}
-              >
-                在泉
-              </text>
-            )}
-            {!sector.isSiTian && !sector.isZaiQuan && (
-              <text
-                x={sector.labelX}
-                y={sector.labelY + 5}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                style={{ fontSize: '7px', fill: sector.element === '金' ? '#555' : 'rgba(255,255,255,0.7)' }}
-              >
-                客气
-              </text>
-            )}
-          </g>
-        ))}
-
-        {/* 中心圆 */}
-        <circle
-          cx={center}
-          cy={center}
-          r={centerRadius}
-          fill="hsl(var(--card))"
-          stroke="hsl(var(--primary))"
-          strokeWidth="2"
-        />
-
-        {/* 中心文字 */}
-        <text
-          x={center}
-          y={center - 12}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          className="font-serif text-lg fill-foreground"
-        >
-          {ganZhi}
-        </text>
-        <text
-          x={center}
-          y={center + 8}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          className="fill-primary font-medium"
-          style={{ fontSize: '10px' }}
-        >
-          司天·{siTian.slice(0, 2)}
-        </text>
-        <text
-          x={center}
-          y={center + 22}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          className="fill-accent font-medium"
-          style={{ fontSize: '10px' }}
-        >
-          在泉·{zaiQuan.slice(0, 2)}
-        </text>
-      </svg>
-
-      {/* 图例 */}
-      <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-primary" />
-          <span className="text-foreground">司天（三之气）</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-accent" />
-          <span className="text-foreground">在泉（终之气）</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full border-2 border-primary animate-pulse" />
-          <span className="text-muted-foreground">当前时令</span>
+    <div className="w-full flex flex-col items-center">
+      {/* 信息卡片 - 卷轴样式 */}
+      <div className="w-full max-w-md mb-6 relative">
+        <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-amber-600 to-amber-400 rounded-l-sm" />
+        <div className="absolute right-0 top-0 bottom-0 w-3 bg-gradient-to-l from-amber-600 to-amber-400 rounded-r-sm" />
+        <div className="bg-amber-50 border-y-2 border-amber-300 px-6 py-4 mx-2">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-base">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-amber-800">岁运</span>
+              <span className="font-semibold text-amber-900">{yearInfo.taiGuoBuJi}{yearInfo.zhongYun}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-amber-800">{yearInfo.ganZhi}年</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-amber-800">司天</span>
+              <span className="font-semibold text-amber-900">{yearInfo.siTian}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-amber-800">当前</span>
+              <span className="font-semibold text-amber-900">{currentQiInfo.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-amber-800">在泉</span>
+              <span className="font-semibold text-amber-900">{yearInfo.zaiQuan}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-amber-800">节气</span>
+              <span className="font-semibold text-amber-900">{currentQiInfo.jieQiRange}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 时段说明 */}
-      <div className="mt-4 w-full max-w-md text-xs text-muted-foreground">
-        <div className="grid grid-cols-3 gap-1 text-center">
-          {QI_PERIODS.map((p, i) => (
-            <div key={i} className={`p-1 rounded ${i === currentQiIndex ? 'bg-primary/20 text-primary' : ''}`}>
-              <div className="font-medium">{p.name}</div>
-              <div>{p.jieQiStart}-{p.jieQiEnd}</div>
-            </div>
-          ))}
-        </div>
+      {/* 六气圆盘图 */}
+      <div className="relative" style={{ width: size + 100, height: size + 100 }}>
+        <svg width={size + 100} height={size + 100} className="overflow-visible">
+          <defs>
+            <radialGradient id="sunGradient2" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#fff7ed" />
+              <stop offset="40%" stopColor="#fcd34d" />
+              <stop offset="70%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#d97706" />
+            </radialGradient>
+            <filter id="sunGlow2">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g transform={`translate(50, 50)`}>
+            {/* 外圈边框 */}
+            <circle cx={center} cy={center} r={outerRadius + 2} fill="none" stroke="#d4a574" strokeWidth="3" />
+            
+            {/* 绘制六气扇形 */}
+            {[0, 1, 2, 3, 4, 5].map((i) => {
+              const startAngle = -90 + i * 60;
+              const endAngle = startAngle + 60;
+              const midAngle = startAngle + 30;
+              const zhuQi = ZHU_QI_ORDER[i];
+              const keQi = keQiOrder[i];
+              const relation = getKeZhuRelation(zhuQi, keQi);
+              const isCurrent = i === currentQiIndex;
+              const isSiTian = i === 2; // 三之气为司天
+              const isZaiQuan = i === 5; // 终之气为在泉
+              
+              return (
+                <g key={i}>
+                  {/* 客气（外圈） */}
+                  <path
+                    d={describeSector(center, center, middleRadius, outerRadius, startAngle, endAngle)}
+                    fill={LIU_QI_COLORS[keQi].bg}
+                    stroke="#fff"
+                    strokeWidth="2"
+                    opacity={isCurrent ? 1 : 0.85}
+                  />
+                  {/* 主气（中圈） */}
+                  <path
+                    d={describeSector(center, center, innerRadius, middleRadius, startAngle, endAngle)}
+                    fill={LIU_QI_COLORS[zhuQi].bg}
+                    stroke="#fff"
+                    strokeWidth="2"
+                    opacity={isCurrent ? 1 : 0.85}
+                  />
+                  {/* 气序（内圈） */}
+                  <path
+                    d={describeSector(center, center, centerRadius, innerRadius, startAngle, endAngle)}
+                    fill={isCurrent ? '#fef3c7' : '#fff'}
+                    stroke="#e5e5e5"
+                    strokeWidth="1"
+                  />
+                  
+                  {/* 客气文字 */}
+                  {(() => {
+                    const textR = (middleRadius + outerRadius) / 2 - 5;
+                    const pos = polarToCartesian(center, center, textR, midAngle);
+                    const rotation = midAngle;
+                    const adjustedRotation = rotation > 90 && rotation < 270 ? rotation + 180 : rotation;
+                    
+                    return (
+                      <g>
+                        <text
+                          x={pos.x}
+                          y={pos.y - 8}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={LIU_QI_COLORS[keQi].text}
+                          fontSize="11"
+                          fontWeight="600"
+                          transform={`rotate(${adjustedRotation}, ${pos.x}, ${pos.y - 8})`}
+                        >
+                          客:{keQi.slice(0, 4)}
+                        </text>
+                        <text
+                          x={pos.x}
+                          y={pos.y + 8}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={relation.type === 'ni' ? '#dc2626' : '#16a34a'}
+                          fontSize="10"
+                          fontWeight="500"
+                          transform={`rotate(${adjustedRotation}, ${pos.x}, ${pos.y + 8})`}
+                        >
+                          {relation.text},{relation.type === 'ni' ? '逆' : '顺'}
+                        </text>
+                      </g>
+                    );
+                  })()}
+                  
+                  {/* 主气文字 */}
+                  {(() => {
+                    const textR = (innerRadius + middleRadius) / 2;
+                    const pos = polarToCartesian(center, center, textR, midAngle);
+                    const rotation = midAngle;
+                    const adjustedRotation = rotation > 90 && rotation < 270 ? rotation + 180 : rotation;
+                    return (
+                      <text
+                        x={pos.x}
+                        y={pos.y}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={LIU_QI_COLORS[zhuQi].text}
+                        fontSize="11"
+                        fontWeight="600"
+                        transform={`rotate(${adjustedRotation}, ${pos.x}, ${pos.y})`}
+                      >
+                        主:{zhuQi.slice(0, 4)}
+                      </text>
+                    );
+                  })()}
+                  
+                  {/* 气序文字 */}
+                  {(() => {
+                    const textR = (centerRadius + innerRadius) / 2;
+                    const pos = polarToCartesian(center, center, textR, midAngle);
+                    const qiNames = ['初之气', '二之气', '三之气', '四之气', '五之气', '终之气'];
+                    return (
+                      <text
+                        x={pos.x}
+                        y={pos.y}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={isCurrent ? '#92400e' : '#666'}
+                        fontSize="10"
+                        fontWeight={isCurrent ? '700' : '500'}
+                      >
+                        {qiNames[i]}
+                      </text>
+                    );
+                  })()}
+                  
+                  {/* 司天/在泉标记 */}
+                  {(isSiTian || isZaiQuan) && (() => {
+                    const labelR = outerRadius - 8;
+                    const pos = polarToCartesian(center, center, labelR, midAngle + 20);
+                    return (
+                      <g>
+                        <rect
+                          x={pos.x - 14}
+                          y={pos.y - 10}
+                          width="28"
+                          height="20"
+                          rx="3"
+                          fill={isSiTian ? '#fbbf24' : '#a3a3a3'}
+                        />
+                        <text
+                          x={pos.x}
+                          y={pos.y}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill="#fff"
+                          fontSize="11"
+                          fontWeight="700"
+                        >
+                          {isSiTian ? '司天' : '在泉'}
+                        </text>
+                      </g>
+                    );
+                  })()}
+                </g>
+              );
+            })}
+            
+            {/* 中心太阳 */}
+            <circle
+              cx={center}
+              cy={center}
+              r={centerRadius - 5}
+              fill="url(#sunGradient2)"
+              filter="url(#sunGlow2)"
+            />
+            
+            {/* 24节气 */}
+            {QI_JIE_QI.map((jq, i) => {
+              const angle = -90 + (i * 15);
+              const nameR = outerRadius + 25;
+              const dateR = outerRadius + 42;
+              const namePos = polarToCartesian(center, center, nameR, angle);
+              const datePos = polarToCartesian(center, center, dateR, angle);
+              
+              // 判断是否为气的起始节气
+              const isQiStart = QI_START_JIEQI.includes(i);
+              
+              return (
+                <g key={i}>
+                  <text
+                    x={namePos.x}
+                    y={namePos.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill={isQiStart ? '#92400e' : '#666'}
+                    fontSize={isQiStart ? '12' : '11'}
+                    fontWeight={isQiStart ? '600' : '400'}
+                    transform={`rotate(${angle}, ${namePos.x}, ${namePos.y})`}
+                  >
+                    {jq.name}
+                  </text>
+                  {isQiStart && (
+                    <text
+                      x={datePos.x}
+                      y={datePos.y}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#92400e"
+                      fontSize="10"
+                      transform={`rotate(${angle}, ${datePos.x}, ${datePos.y})`}
+                    >
+                      {jq.date}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+            
+            {/* 当前气指示点 */}
+            {(() => {
+              const angle = -90 + currentQiIndex * 60;
+              const pos = polarToCartesian(center, center, outerRadius + 8, angle);
+              return (
+                <circle cx={pos.x} cy={pos.y} r="5" fill="#d97706" stroke="#fff" strokeWidth="2" />
+              );
+            })()}
+          </g>
+        </svg>
+      </div>
+
+      {/* 图例说明 */}
+      <div className="mt-4 grid grid-cols-3 gap-3 text-sm max-w-md">
+        {ZHU_QI_ORDER.map((qi) => (
+          <div key={qi} className="flex items-center gap-2">
+            <div 
+              className="w-4 h-4 rounded" 
+              style={{ backgroundColor: LIU_QI_COLORS[qi].bg }}
+            />
+            <span className="text-muted-foreground text-xs">{qi.slice(0, 4)}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
-}
-
-// 绘制环形扇区
-function describeArc(cx: number, cy: number, outerR: number, innerR: number, startAngle: number, endAngle: number) {
-  const startRad = startAngle * (Math.PI / 180);
-  const endRad = endAngle * (Math.PI / 180);
-  
-  const x1 = cx + outerR * Math.cos(startRad);
-  const y1 = cy + outerR * Math.sin(startRad);
-  const x2 = cx + outerR * Math.cos(endRad);
-  const y2 = cy + outerR * Math.sin(endRad);
-  const x3 = cx + innerR * Math.cos(endRad);
-  const y3 = cy + innerR * Math.sin(endRad);
-  const x4 = cx + innerR * Math.cos(startRad);
-  const y4 = cy + innerR * Math.sin(startRad);
-  
-  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
-  
-  return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`;
 }
