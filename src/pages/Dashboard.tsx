@@ -368,15 +368,7 @@ export default function Dashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <WuYunChart 
-                    year={yearInfo.year}
-                    ganZhi={yearInfo.ganZhi}
-                    daYun={yearInfo.daYun}
-                    wuXing={yearInfo.wuXing}
-                    taiGuoBuJi={yearInfo.taiGuoBuJi}
-                    zhuYun={yearInfo.zhuYun}
-                    keYun={yearInfo.keYun}
-                  />
+                  <WuYunChart yearInfo={yearInfo} />
                 </CardContent>
               </Card>
 
@@ -389,14 +381,7 @@ export default function Dashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <LiuQiChart 
-                    year={yearInfo.year}
-                    ganZhi={yearInfo.ganZhi}
-                    siTian={yearInfo.siTian}
-                    zaiQuan={yearInfo.zaiQuan}
-                    zhuQi={yearInfo.zhuQi}
-                    keQi={yearInfo.keQi}
-                  />
+                  <LiuQiChart yearInfo={yearInfo} />
                 </CardContent>
               </Card>
             </div>
@@ -554,15 +539,7 @@ export default function Dashboard() {
             <div className="grid lg:grid-cols-2 gap-6">
               <Card>
                 <CardContent className="pt-6">
-                  <WuYunChart 
-                    year={yearInfo.year}
-                    ganZhi={yearInfo.ganZhi}
-                    daYun={yearInfo.daYun}
-                    wuXing={yearInfo.wuXing}
-                    taiGuoBuJi={yearInfo.taiGuoBuJi}
-                    zhuYun={yearInfo.zhuYun}
-                    keYun={yearInfo.keYun}
-                  />
+                  <WuYunChart yearInfo={yearInfo} />
                 </CardContent>
               </Card>
 
@@ -633,14 +610,7 @@ export default function Dashboard() {
             <div className="grid lg:grid-cols-2 gap-6">
               <Card>
                 <CardContent className="pt-6">
-                  <LiuQiChart 
-                    year={yearInfo.year}
-                    ganZhi={yearInfo.ganZhi}
-                    siTian={yearInfo.siTian}
-                    zaiQuan={yearInfo.zaiQuan}
-                    zhuQi={yearInfo.zhuQi}
-                    keQi={yearInfo.keQi}
-                  />
+                  <LiuQiChart yearInfo={yearInfo} />
                 </CardContent>
               </Card>
 
