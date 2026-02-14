@@ -532,6 +532,29 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             )}
+            
+            {/* 赞助支持入口 */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow group border-amber-300/50 bg-gradient-to-r from-amber-50/50 to-transparent"
+              onClick={() => navigate('/sponsor')}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Heart className="w-6 h-6 text-white fill-white animate-pulse" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-amber-700 transition-colors">
+                      支持本站 · 传承中医
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      用爱发电不易，您的支持是我们继续前行的动力
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-amber-600 transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 五运图 */}

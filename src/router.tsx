@@ -6,6 +6,7 @@ import Classics from "./pages/Classics";
 import HealthAdvice from "./pages/HealthAdvice";
 import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
+import Sponsor from "./pages/Sponsor";
 
 export const routers = [
     {
@@ -42,6 +43,11 @@ export const routers = [
       path: "/admin",
       name: 'admin',
       element: <Admin />,
+    },
+    {
+      path: "/sponsor",
+      name: 'sponsor',
+      element: <Sponsor />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {
