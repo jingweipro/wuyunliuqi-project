@@ -7,7 +7,7 @@ import {
   getCurrentQi,
   type LiuQi 
 } from '@/lib/wuyun-liuqi';
-import { ArrowRight, Zap, Heart, Shield } from 'lucide-react';
+import { ArrowRight, Zap, Heart, Shield, ArrowDown } from 'lucide-react';
 
 interface KeZhuJiaLinItem {
   qiIndex: number;
@@ -24,18 +24,28 @@ interface Props {
   zaiQuan: LiuQi;
 }
 
+// 关系类型样式映射
+function getRelationStyle(relation: string) {
+  if (relation.includes('相得')) {
+    return { bgColor: 'bg-green-500/15', textColor: 'text-green-700', icon: <Heart className="w-3 h-3" /> };
+  }
+  if (relation.includes('顺')) {
+    return { bgColor: 'bg-blue-500/15', textColor: 'text-blue-700', icon: <Shield className="w-3 h-3" /> };
+  }
+  if (relation.includes('逆')) {
+    return { bgColor: 'bg-red-500/15', textColor: 'text-red-700', icon: <Zap className="w-3 h-3" /> };
+  }
+  if (relation.includes('泄')) {
+    return { bgColor: 'bg-orange-500/15', textColor: 'text-orange-700', icon: <ArrowDown className="w-3 h-3" /> };
+  }
+  if (relation.includes('胜')) {
+    return { bgColor: 'bg-purple-500/15', textColor: 'text-purple-700', icon: <Shield className="w-3 h-3" /> };
+  }
+  return { bgColor: 'bg-gray-500/15', textColor: 'text-gray-600', icon: <ArrowRight className="w-3 h-3" /> };
+}
+
 export default function KeZhuJiaLinCard({ keZhuJiaLin, siTian, zaiQuan }: Props) {
   const currentQiIndex = getCurrentQi();
-
-  // 关系类型对应的样式
-  const relationStyles: Record<string, { color: string; icon: React.ReactNode }> = {
-    '同气': { color: 'bg-amber-500/20 text-amber-600', icon: <Zap className="w-3 h-3" /> },
-    '客生主·顺': { color: 'bg-green-500/20 text-green-600', icon: <Heart className="w-3 h-3" /> },
-    '主生客·逆': { color: 'bg-orange-500/20 text-orange-600', icon: <ArrowRight className="w-3 h-3" /> },
-    '客克主·逆': { color: 'bg-red-500/20 text-red-600', icon: <Zap className="w-3 h-3" /> },
-    '主克客·顺': { color: 'bg-blue-500/20 text-blue-600', icon: <Shield className="w-3 h-3" /> },
-    '相离': { color: 'bg-gray-500/20 text-gray-600', icon: <ArrowRight className="w-3 h-3" /> },
-  };
 
   return (
     <Card>
@@ -54,7 +64,7 @@ export default function KeZhuJiaLinCard({ keZhuJiaLin, siTian, zaiQuan }: Props)
             const isSiTian = item.qiIndex === 2;
             const isZaiQuan = item.qiIndex === 5;
             const period = QI_PERIODS[item.qiIndex];
-            const relationStyle = relationStyles[item.relation] || relationStyles['相离'];
+            const style = getRelationStyle(item.relation);
 
             return (
               <div
@@ -71,21 +81,21 @@ export default function KeZhuJiaLinCard({ keZhuJiaLin, siTian, zaiQuan }: Props)
                     {item.qiName}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {period.jieQiStart} - {period.jieQiEnd}
+                    {period.jieQiStart} - {period.jieQiEnd}（{period.dateRange}）
                   </span>
                   {isCurrent && (
                     <Badge variant="default" className="bg-primary text-xs">当前</Badge>
                   )}
                   {isSiTian && (
-                    <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">司天主气</Badge>
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">司天</Badge>
                   )}
                   {isZaiQuan && (
-                    <Badge variant="secondary" className="bg-accent/20 text-accent-foreground text-xs">在泉主气</Badge>
+                    <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">在泉</Badge>
                   )}
                 </div>
 
                 {/* 主客气对比 */}
-                <div className="flex items-center justify-between gap-4 mb-3">
+                <div className="flex items-center justify-between gap-3 mb-3">
                   {/* 主气 */}
                   <div className="flex-1 p-3 rounded-lg bg-secondary/50">
                     <div className="text-xs text-muted-foreground mb-1">主气（固定）</div>
@@ -94,7 +104,7 @@ export default function KeZhuJiaLinCard({ keZhuJiaLin, siTian, zaiQuan }: Props)
                         className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: WU_XING_ATTRIBUTES[zhuElement].color }}
                       />
-                      <span className="font-serif text-sm text-foreground">{item.zhuQi}</span>
+                      <span className="font-serif text-sm text-foreground font-medium">{item.zhuQi}</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {LIU_QI_ATTRIBUTES[item.zhuQi].nature}气 · {zhuElement}
@@ -102,12 +112,12 @@ export default function KeZhuJiaLinCard({ keZhuJiaLin, siTian, zaiQuan }: Props)
                   </div>
 
                   {/* 关系指示 */}
-                  <div className="flex flex-col items-center">
-                    <Badge className={`${relationStyle.color} flex items-center gap-1 text-xs`}>
-                      {relationStyle.icon}
-                      {item.relation}
+                  <div className="flex flex-col items-center gap-1">
+                    <Badge className={`${style.bgColor} ${style.textColor} flex items-center gap-1 text-xs px-2 py-1`}>
+                      {style.icon}
+                      {item.relation.split('（')[0]}
                     </Badge>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground my-1" />
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
                   </div>
 
                   {/* 客气 */}
@@ -118,7 +128,7 @@ export default function KeZhuJiaLinCard({ keZhuJiaLin, siTian, zaiQuan }: Props)
                         className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: WU_XING_ATTRIBUTES[keElement].color }}
                       />
-                      <span className="font-serif text-sm text-foreground">{item.keQi}</span>
+                      <span className="font-serif text-sm text-foreground font-medium">{item.keQi}</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {LIU_QI_ATTRIBUTES[item.keQi].nature}气 · {keElement}
@@ -139,16 +149,22 @@ export default function KeZhuJiaLinCard({ keZhuJiaLin, siTian, zaiQuan }: Props)
 
         {/* 补充说明 */}
         <div className="mt-6 p-4 rounded-lg bg-secondary/30 border border-border">
-          <h4 className="font-medium text-foreground mb-2">客主加临说明</h4>
+          <h4 className="font-medium text-foreground mb-2">客主加临关系说明</h4>
           <div className="text-sm text-muted-foreground space-y-2">
             <p>
-              <span className="text-green-600 font-medium">顺</span>：客生主、主克客为顺，气候和平，万物安泰。
+              <span className="text-green-700 font-medium">相得</span>：主客同属一个五行，气候偏盛，需防太过。
             </p>
             <p>
-              <span className="text-red-600 font-medium">逆</span>：客克主、主生客为逆，气候失常，易生疾病。
+              <span className="text-blue-700 font-medium">顺（客生主）</span>：客气五行生主气五行，客来助主，气候和平。
             </p>
             <p>
-              <span className="text-amber-600 font-medium">同气</span>：主客相同，该气偏盛，需防太过。
+              <span className="text-red-700 font-medium">逆（客克主）</span>：客气五行克主气五行，客胜主负，当防胜复。
+            </p>
+            <p>
+              <span className="text-orange-700 font-medium">泄（主生客）</span>：主气五行生客气五行，地气外泄，正气耗散。
+            </p>
+            <p>
+              <span className="text-purple-700 font-medium">胜（主克客）</span>：主气五行克客气五行，地气制天，秩序有常。
             </p>
           </div>
         </div>

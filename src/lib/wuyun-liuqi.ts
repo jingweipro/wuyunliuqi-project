@@ -211,27 +211,48 @@ export function getZhuYun(): { xing: WuXing; name: string }[] {
 
 /**
  * 计算客运（根据中运推算）
- * 客运从中运开始，按五行相生顺序排列
+ * 关键规则——太少相生反推：
+ * 从岁运开始按五行相生顺序排列，太少交替
+ * 但当从"水(羽)"过渡到"木(角)"时，太少不反转（保持原样）
+ * 参考《素问·六元正纪大论》
  */
 export function getKeYun(year: number): { xing: WuXing; name: string; taiGuoBuJi: '太过' | '不及' }[] {
   const { gan } = getGanZhi(year);
   const zhongYunXing = TIAN_GAN_WU_YUN[gan].xing;
   const taiGuoBuJi = getTaiGuoBuJi(gan);
   
-  // 五行相生顺序
+  // 五行相生顺序：角(木)→征(火)→宫(土)→商(金)→羽(水)
   const shengOrder: WuXing[] = ['木', '火', '土', '金', '水'];
   const startIndex = shengOrder.indexOf(zhongYunXing);
   
-  // 客运太过不及交替
   const keYun: { xing: WuXing; name: string; taiGuoBuJi: '太过' | '不及' }[] = [];
+  let currentIsTaiGuo = taiGuoBuJi === '太过';
+  
+  // 五音名对应
+  const wuYin: Record<WuXing, string> = { '木': '角', '火': '征', '土': '宫', '金': '商', '水': '羽' };
+  
   for (let i = 0; i < 5; i++) {
-    const xing = shengOrder[(startIndex + i) % 5];
-    const currentTaiGuo = i % 2 === 0 ? taiGuoBuJi : (taiGuoBuJi === '太过' ? '不及' : '太过');
+    const xingIndex = (startIndex + i) % 5;
+    const xing = shengOrder[xingIndex];
+    const taiShao = currentIsTaiGuo ? '太' : '少';
+    
     keYun.push({
       xing,
-      name: `${['初', '二', '三', '四', '五'][i]}运·${xing}`,
-      taiGuoBuJi: currentTaiGuo,
+      name: `${taiShao}${wuYin[xing]}·${xing}`,
+      taiGuoBuJi: currentIsTaiGuo ? '太过' : '不及',
     });
+    
+    // 判断下一步是否跨越"水→木"（羽→角）边界
+    if (i < 4) {
+      const nextXingIndex = (startIndex + i + 1) % 5;
+      if (xingIndex === 4 && nextXingIndex === 0) {
+        // 跨越了"水→木"的边界，太少不反转（反推）
+        // currentIsTaiGuo 保持不变
+      } else {
+        // 正常交替
+        currentIsTaiGuo = !currentIsTaiGuo;
+      }
+    }
   }
   
   return keYun;
@@ -286,6 +307,13 @@ export function getLiuQi(year: number) {
 
 /**
  * 获取客主加临分析
+ * 
+ * 关系判断基于五行属性：
+ * - 相得：主客同一五行（如少阳相火与少阴君火均属火）
+ * - 顺（客生主）：客气五行生主气五行
+ * - 逆（客克主）：客气五行克主气五行
+ * - 泄（主生客）：主气五行生客气五行
+ * - 胜（主克客）：主气五行克客气五行
  */
 export function getKeZhuJiaLin(year: number): {
   qiIndex: number;
@@ -296,7 +324,6 @@ export function getKeZhuJiaLin(year: number): {
   description: string;
 }[] {
   const { zhuQi, keQi, siTian, zaiQuan } = getLiuQi(year);
-  const { taiGuoBuJi } = getWuYun(year);
   
   const qiNames = ['初之气', '二之气', '三之气', '四之气', '五之气', '终之气'];
   
@@ -306,42 +333,36 @@ export function getKeZhuJiaLin(year: number): {
     const zhuElement = LIU_QI_ATTRIBUTES[zhu].element;
     const keElement = LIU_QI_ATTRIBUTES[ke].element;
     
-    // 计算主客关系
+    // 用五行属性判断关系（注意少阴君火与少阳相火同属火）
     let relation: string;
     let description: string;
     
-    if (zhu === ke) {
-      relation = '同气';
-      description = `主客同气，${LIU_QI_ATTRIBUTES[zhu].nature}气偏盛，易见${LIU_QI_ATTRIBUTES[zhu].nature}邪为病`;
+    if (zhuElement === keElement) {
+      // 同属一个五行即为"相得"（包括少阴君火与少阳相火的情况）
+      relation = '相得';
+      description = `主客同属${zhuElement}，气候相得，${LIU_QI_ATTRIBUTES[zhu].nature}气偏盛`;
     } else if (isSheng(keElement, zhuElement)) {
-      relation = '客生主·顺';
-      description = `客气${ke}生主气${zhu}，气候平和，万物生长`;
-    } else if (isSheng(zhuElement, keElement)) {
-      relation = '主生客·逆';
-      description = `主气${zhu}生客气${ke}，地气外泄，正气易伤`;
+      relation = '顺（客生主）';
+      description = `客气${ke}(${keElement})生主气${zhu}(${zhuElement})，客来助主，气候和平`;
     } else if (isKe(keElement, zhuElement)) {
-      relation = '客克主·逆';
-      description = `客气${ke}克主气${zhu}，天气胜地，易有灾疫`;
+      relation = '逆（客克主）';
+      description = `客气${ke}(${keElement})克主气${zhu}(${zhuElement})，客胜主负，当防胜复`;
+    } else if (isSheng(zhuElement, keElement)) {
+      relation = '泄（主生客）';
+      description = `主气${zhu}(${zhuElement})生客气${ke}(${keElement})，地气外泄，正气耗散`;
     } else if (isKe(zhuElement, keElement)) {
-      relation = '主克客·顺';
-      description = `主气${zhu}克客气${ke}，地气制天，气候和平`;
+      relation = '胜（主克客）';
+      description = `主气${zhu}(${zhuElement})克客气${ke}(${keElement})，地气制天，秩序有常`;
     } else {
-      relation = '相离';
-      description = `主客相离，各司其政，气候正常`;
+      relation = '和';
+      description = `主客各司其政，气候正常`;
     }
     
     // 添加司天在泉标记
     if (index === 2) {
-      description += `。此为司天（${siTian}）之位，主上半年气候。`;
+      description += `  【司天 · ${siTian}】主上半年气候。`;
     } else if (index === 5) {
-      description += `。此为在泉（${zaiQuan}）之位，主下半年气候。`;
-    }
-    
-    // 添加运气特点
-    if (taiGuoBuJi === '太过') {
-      description += ' 运气太过，当防其盛。';
-    } else {
-      description += ' 运气不及，宜助其弱。';
+      description += `  【在泉 · ${zaiQuan}】主下半年气候。`;
     }
     
     return {

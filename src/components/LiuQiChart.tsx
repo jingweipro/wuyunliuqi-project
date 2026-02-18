@@ -89,14 +89,15 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
     '木': '土', '火': '金', '土': '水', '金': '木', '水': '火'
   };
 
-  // 计算客主关系（更精确的判断）
+  // 计算客主关系（基于五行属性判断）
   const getKeZhuRelation = (zhuQi: string, keQi: string) => {
-    if (zhuQi === keQi) {
-      return { text: '相得', color: '#16a34a' }; // 绿色
-    }
-    
     const zhuWuxing = QI_WUXING[zhuQi];
     const keWuxing = QI_WUXING[keQi];
+    
+    // 同属一个五行即为"相得"（包括少阴君火与少阳相火的情况）
+    if (zhuWuxing === keWuxing) {
+      return { text: '相得', color: '#16a34a' }; // 绿色
+    }
     
     // 客生主 - 顺
     if (wuxingSheng[keWuxing] === zhuWuxing) {
@@ -108,12 +109,12 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
       return { text: '逆', color: '#dc2626' }; // 红色
     }
     
-    // 主生客 - 不及
+    // 主生客 - 泄
     if (wuxingSheng[zhuWuxing] === keWuxing) {
       return { text: '泄', color: '#ea580c' }; // 橙色
     }
     
-    // 主克客 - 平
+    // 主克客 - 胜
     if (wuxingKe[zhuWuxing] === keWuxing) {
       return { text: '胜', color: '#7c3aed' }; // 紫色
     }
