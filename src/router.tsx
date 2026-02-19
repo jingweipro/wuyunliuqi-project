@@ -7,6 +7,8 @@ import HealthAdvice from "./pages/HealthAdvice";
 import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import Sponsor from "./pages/Sponsor";
+import BaZi from "./pages/BaZi";
+import ZiWei from "./pages/ZiWei";
 
 export const routers = [
     {
@@ -48,6 +50,16 @@ export const routers = [
       path: "/sponsor",
       name: 'sponsor',
       element: <Sponsor />,
+    },
+    {
+      path: "/bazi",
+      name: 'bazi',
+      element: <BaZi />,
+    },
+    {
+      path: "/ziwei",
+      name: 'ziwei',
+      element: <ZiWei />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {

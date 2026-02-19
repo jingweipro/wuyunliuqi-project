@@ -55,13 +55,24 @@ export default function Dashboard() {
   const [editBirthYear, setEditBirthYear] = useState('');
   const [editBirthMonth, setEditBirthMonth] = useState('');
   const [editBirthDay, setEditBirthDay] = useState('');
+  const [editBirthHour, setEditBirthHour] = useState('');
+  const [editBirthMinute, setEditBirthMinute] = useState('');
   const [editRegion, setEditRegion] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editDistrict, setEditDistrict] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 150 }, (_, i) => currentYear + 50 - i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = Array.from({ length: 60 }, (_, i) => i);
+  
+  // 十二时辰对应
+  const shiChen = ['子时(23-1)', '丑时(1-3)', '寅时(3-5)', '卯时(5-7)', '辰时(7-9)', '巳时(9-11)', 
+                   '午时(11-13)', '未时(13-15)', '申时(15-17)', '酉时(17-19)', '戌时(19-21)', '亥时(21-23)'];
+  const getShiChen = (hour: number) => shiChen[Math.floor(((hour + 1) % 24) / 2)];
 
   useEffect(() => {
     if (!loading && !user) {
@@ -82,7 +93,11 @@ export default function Dashboard() {
       setEditBirthYear(profile.birth_year?.toString() || '');
       setEditBirthMonth(profile.birth_month?.toString() || '');
       setEditBirthDay(profile.birth_day?.toString() || '');
+      setEditBirthHour(profile.birth_hour?.toString() ?? '');
+      setEditBirthMinute(profile.birth_minute?.toString() ?? '');
       setEditRegion(profile.region || '');
+      setEditCity(profile.city || '');
+      setEditDistrict(profile.district || '');
     }
   }, [profile]);
 
@@ -107,7 +122,11 @@ export default function Dashboard() {
         birth_year: editBirthYear ? parseInt(editBirthYear) : null,
         birth_month: editBirthMonth ? parseInt(editBirthMonth) : null,
         birth_day: editBirthDay ? parseInt(editBirthDay) : null,
+        birth_hour: editBirthHour !== '' ? parseInt(editBirthHour) : null,
+        birth_minute: editBirthMinute !== '' ? parseInt(editBirthMinute) : null,
         region: editRegion || null,
+        city: editCity || null,
+        district: editDistrict || null,
       });
       toast({ title: '保存成功', description: '个人信息已更新' });
       setProfileDialogOpen(false);
@@ -205,10 +224,45 @@ export default function Dashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>所在地区</Label>
+                    <Label>出生时间</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select value={editBirthHour} onValueChange={setEditBirthHour}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="时" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {hours.map((h) => (
+                            <SelectItem key={h} value={h.toString()}>
+                              {h.toString().padStart(2, '0')}时 ({getShiChen(h)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={editBirthMinute} onValueChange={setEditBirthMinute}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="分" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {minutes.map((m) => (
+                            <SelectItem key={m} value={m.toString()}>
+                              {m.toString().padStart(2, '0')}分
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {editBirthHour !== '' && (
+                      <p className="text-xs text-muted-foreground">
+                        对应时辰：{getShiChen(parseInt(editBirthHour))}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>所在地区（省份）</Label>
                     <Select value={editRegion} onValueChange={setEditRegion}>
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择地区" />
+                        <SelectValue placeholder="请选择省份" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
                         {PROVINCES.map((province) => (
@@ -218,6 +272,25 @@ export default function Dashboard() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>城市</Label>
+                      <Input
+                        value={editCity}
+                        onChange={(e) => setEditCity(e.target.value)}
+                        placeholder="如：杭州市"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>区/县</Label>
+                      <Input
+                        value={editDistrict}
+                        onChange={(e) => setEditDistrict(e.target.value)}
+                        placeholder="如：西湖区"
+                      />
+                    </div>
                   </div>
 
                   <Button 
@@ -532,6 +605,52 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             )}
+            
+            {/* 八字排盘入口 */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow group border-element-fire/30 bg-gradient-to-r from-red-50/50 to-transparent"
+              onClick={() => navigate('/bazi')}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="text-white font-serif font-bold text-lg">八</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-red-700 transition-colors">
+                      八字排盘
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      四柱八字排盘、五行分析、十神关系、大运流年
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-red-600 transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 紫微斗数入口 */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow group border-purple-300/50 bg-gradient-to-r from-purple-50/50 to-transparent"
+              onClick={() => navigate('/ziwei')}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="text-white font-serif font-bold text-lg">紫</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-purple-700 transition-colors">
+                      紫微斗数
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      紫微斗数排盘、十二宫位、命理分析
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-purple-600 transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
             
             {/* 赞助支持入口 */}
             <Card 
