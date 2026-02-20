@@ -60,12 +60,12 @@ const QI_JIE_QI = [
 const QI_START_JIEQI = [0, 4, 8, 12, 16, 20];
 
 export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
-  const size = 400;
+  const size = 500;
   const center = size / 2;
-  const outerRadius = 170;
-  const middleRadius = 130;
-  const innerRadius = 85;
-  const centerRadius = 45;
+  const outerRadius = 215;
+  const middleRadius = 165;
+  const innerRadius = 110;
+  const centerRadius = 55;
 
   // 计算客气顺序（以司天为三之气）
   const keQiOrder = useMemo(() => {
@@ -201,8 +201,8 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
       </div>
 
       {/* 六气圆盘图 */}
-      <div className="relative" style={{ width: size + 120, height: size + 120 }}>
-        <svg width={size + 120} height={size + 120} className="overflow-visible">
+      <div className="relative w-full overflow-x-auto flex justify-center">
+        <svg width={size + 160} height={size + 160} className="overflow-visible min-w-[500px]">
           <defs>
             <radialGradient id="sunGradient2" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#fff7ed" />
@@ -219,7 +219,7 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
             </filter>
           </defs>
 
-          <g transform={`translate(60, 60)`}>
+          <g transform={`translate(80, 80)`}>
             {/* 外圈边框 */}
             <circle cx={center} cy={center} r={outerRadius + 2} fill="none" stroke="#d4a574" strokeWidth="3" />
             
@@ -263,8 +263,8 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
                   
                   {/* 客气文字 - 分两行显示 */}
                   {(() => {
-                    const textR1 = (middleRadius + outerRadius) / 2 - 8;
-                    const textR2 = (middleRadius + outerRadius) / 2 + 8;
+                    const textR1 = (middleRadius + outerRadius) / 2 - 10;
+                    const textR2 = (middleRadius + outerRadius) / 2 + 10;
                     const pos1 = polarToCartesian(center, center, textR1, midAngle);
                     const pos2 = polarToCartesian(center, center, textR2, midAngle);
                     
@@ -276,8 +276,8 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fill={LIU_QI_COLORS[keQi].text}
-                          fontSize="11"
-                          fontWeight="600"
+                          fontSize="12"
+                          fontWeight="700"
                         >
                           客:{keQi.slice(0, 2)}
                         </text>
@@ -287,8 +287,8 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fill={LIU_QI_COLORS[keQi].text}
-                          fontSize="11"
-                          fontWeight="600"
+                          fontSize="12"
+                          fontWeight="700"
                         >
                           {keQi.slice(2, 4)}
                         </text>
@@ -298,8 +298,8 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
                   
                   {/* 主气文字 - 分两行显示 */}
                   {(() => {
-                    const textR1 = (innerRadius + middleRadius) / 2 - 8;
-                    const textR2 = (innerRadius + middleRadius) / 2 + 8;
+                    const textR1 = (innerRadius + middleRadius) / 2 - 10;
+                    const textR2 = (innerRadius + middleRadius) / 2 + 10;
                     const pos1 = polarToCartesian(center, center, textR1, midAngle);
                     const pos2 = polarToCartesian(center, center, textR2, midAngle);
                     return (
@@ -310,8 +310,8 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fill={LIU_QI_COLORS[zhuQi].text}
-                          fontSize="11"
-                          fontWeight="600"
+                          fontSize="12"
+                          fontWeight="700"
                         >
                           主:{zhuQi.slice(0, 2)}
                         </text>
@@ -321,7 +321,8 @@ export default function LiuQiChart({ yearInfo }: LiuQiChartProps) {
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fill={LIU_QI_COLORS[zhuQi].text}
-                          fontSize="11"
+                          fontSize="12"
+                          fontWeight="700"
                           fontWeight="600"
                         >
                           {zhuQi.slice(2, 4)}

@@ -1,6 +1,6 @@
 /**
- * 八字计算核心库
- * 四柱八字排盘、五行分析、十神关系
+ * 八字计算核心库（修正版）
+ * 使用基准日法精确计算日柱，节气表精确划分月柱
  */
 
 const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
@@ -33,13 +33,6 @@ const ZHI_CANG_GAN: Record<string, string[]> = {
   '申': ['庚', '壬', '戊'], '酉': ['辛'], '戌': ['戊', '辛', '丁'], '亥': ['壬', '甲']
 };
 
-// 十二长生
-const CHANG_SHENG_ORDER = ['长生', '沐浴', '冠带', '临官', '帝旺', '衰', '病', '死', '墓', '绝', '胎', '养'];
-const CHANG_SHENG_START: Record<string, number> = {
-  '甲': 0, '丙': 2, '戊': 2, '庚': 8, '壬': 8,  // 阳干
-  '乙': 6, '丁': 4, '己': 4, '辛': 0, '癸': 0    // 阴干（逆行，但用简化方式）
-};
-
 // 十神关系
 function getShiShen(dayGan: string, otherGan: string): string {
   const dayWuxing = GAN_WUXING[dayGan];
@@ -59,57 +52,124 @@ function getShiShen(dayGan: string, otherGan: string): string {
   return '';
 }
 
-// 年柱
-function getYearPillar(year: number) {
-  const offset = (year - 4) % 60;
+// ===== 年柱 =====
+function getYearPillar(year: number, month: number, day: number) {
+  // 立春前算上一年（立春约2月4日）
+  let adjustedYear = year;
+  if (month < 2 || (month === 2 && day < 4)) {
+    adjustedYear = year - 1;
+  }
+  const offset = (adjustedYear - 4) % 60;
   const ganIndex = ((offset % 10) + 10) % 10;
   const zhiIndex = ((offset % 12) + 12) % 12;
   return { gan: TIAN_GAN[ganIndex], zhi: DI_ZHI[zhiIndex] };
 }
 
-// 月柱（以节气划分月份，这里用简化方式）
-function getMonthPillar(year: number, month: number, day: number) {
-  // 月份节气边界（简化：5日为界）
-  let lunarMonth = month;
-  if (day < 5) lunarMonth = month - 1;
-  if (lunarMonth <= 0) { lunarMonth = 12; year--; }
-  if (lunarMonth > 12) lunarMonth = 1;
+// ===== 节气月份表（每月的节气起始日期，简化版） =====
+// 节气日期表（月份对应的"节"，划分月柱的依据）
+// 格式：[月份, 节气名, 大约日期]
+// 1月-小寒/大寒→丑月，2月-立春→寅月，3月-惊蛰→卯月，等等
+function getJieQiMonth(year: number, month: number, day: number): number {
+  // 每年各月的"节"大约日期（用于月柱划分）
+  // 返回以寅月为1的月份编号(1-12)
+  const jieqi: [number, number][] = [
+    [2, 4],   // 立春 → 寅月(1) 开始
+    [3, 6],   // 惊蛰 → 卯月(2) 开始
+    [4, 5],   // 清明 → 辰月(3) 开始
+    [5, 6],   // 立夏 → 巳月(4) 开始
+    [6, 6],   // 芒种 → 午月(5) 开始
+    [7, 7],   // 小暑 → 未月(6) 开始
+    [8, 7],   // 立秋 → 申月(7) 开始
+    [9, 8],   // 白露 → 酉月(8) 开始
+    [10, 8],  // 寒露 → 戌月(9) 开始
+    [11, 7],  // 立冬 → 亥月(10) 开始
+    [12, 7],  // 大雪 → 子月(11) 开始
+    [1, 6],   // 小寒 → 丑月(12) 开始
+  ];
 
-  // 月干 = (年干 * 2 + 月数) % 10
-  const yearGanIndex = (year - 4) % 10;
-  const monthGanIndex = ((yearGanIndex >= 0 ? yearGanIndex : yearGanIndex + 10) * 2 + lunarMonth) % 10;
-  // 月支：寅月起（正月=寅）
-  const monthZhiIndex = (lunarMonth + 1) % 12;
+  // 判断当前日期属于哪个月柱
+  for (let i = jieqi.length - 1; i >= 0; i--) {
+    const [m, d] = jieqi[i];
+    if (i === jieqi.length - 1) {
+      // 小寒（1月）特殊处理
+      if (month === 1 && day >= d) return 12; // 丑月
+      if (month === 12 && day >= jieqi[10][1]) return 11; // 子月
+    } else {
+      if (month === m && day >= d) return i + 1;
+      if (month > m && month < (i + 1 < jieqi.length - 1 ? jieqi[i + 1][0] : 13)) return i + 1;
+    }
+  }
+
+  // 更简化的判断
+  if (month === 1 && day < 6) return 11; // 还在子月
+  if (month === 1) return 12; // 丑月
+  if (month === 2 && day < 4) return 12; // 还在丑月
+
+  // 通用判断
+  const monthStarts = [
+    { solarMonth: 2, solarDay: 4, lunarMonth: 1 },   // 寅月
+    { solarMonth: 3, solarDay: 6, lunarMonth: 2 },   // 卯月
+    { solarMonth: 4, solarDay: 5, lunarMonth: 3 },   // 辰月
+    { solarMonth: 5, solarDay: 6, lunarMonth: 4 },   // 巳月
+    { solarMonth: 6, solarDay: 6, lunarMonth: 5 },   // 午月
+    { solarMonth: 7, solarDay: 7, lunarMonth: 6 },   // 未月
+    { solarMonth: 8, solarDay: 7, lunarMonth: 7 },   // 申月
+    { solarMonth: 9, solarDay: 8, lunarMonth: 8 },   // 酉月
+    { solarMonth: 10, solarDay: 8, lunarMonth: 9 },  // 戌月
+    { solarMonth: 11, solarDay: 7, lunarMonth: 10 }, // 亥月
+    { solarMonth: 12, solarDay: 7, lunarMonth: 11 }, // 子月
+  ];
+
+  for (let i = monthStarts.length - 1; i >= 0; i--) {
+    const ms = monthStarts[i];
+    if (month > ms.solarMonth || (month === ms.solarMonth && day >= ms.solarDay)) {
+      return ms.lunarMonth;
+    }
+  }
+
+  return 12; // 默认丑月
+}
+
+// ===== 月柱 =====
+function getMonthPillar(year: number, month: number, day: number) {
+  const jieqiMonth = getJieQiMonth(year, month, day); // 1=寅月 ... 12=丑月
+
+  // 年干用于确定月干（需要考虑立春换年）
+  let yearForGan = year;
+  if (month < 2 || (month === 2 && day < 4)) {
+    yearForGan = year - 1;
+  }
+  const yearGanIndex = ((yearForGan - 4) % 10 + 10) % 10;
+
+  // 月干公式：(年干序号 * 2 + 月份数 + 1) % 10
+  // 其中月份数 = jieqiMonth (1=寅月)
+  const monthGanIndex = (yearGanIndex * 2 + jieqiMonth + 1) % 10;
+
+  // 月支：寅月(1)=寅(2), 卯月(2)=卯(3), ...
+  const monthZhiIndex = (jieqiMonth + 1) % 12;
 
   return { gan: TIAN_GAN[monthGanIndex], zhi: DI_ZHI[monthZhiIndex] };
 }
 
-// 日柱（简化计算，使用公式）
+// ===== 日柱（基准日法，精确计算） =====
 function getDayPillar(year: number, month: number, day: number) {
-  // 使用蔡勒公式变种计算日干支
-  const y = month <= 2 ? year - 1 : year;
-  const m = month <= 2 ? month + 12 : month;
-  const C = Math.floor(y / 100);
-  const Y = y % 100;
+  // 基准日：2000年1月7日 = 甲子日（干支序号0）
+  const baseDate = new Date(Date.UTC(2000, 0, 7));
+  const targetDate = new Date(Date.UTC(year, month - 1, day));
+  const diffDays = Math.round((targetDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
+  const ganZhiIndex = ((diffDays % 60) + 60) % 60;
 
-  // 日干支序号（从甲子=0开始）
-  let dayNum = Math.floor(y * 365.25) + Math.floor(30.6 * (m + 1)) + day - 621049;
-  dayNum = ((dayNum % 60) + 60) % 60;
-
-  const ganIndex = dayNum % 10;
-  const zhiIndex = dayNum % 12;
+  const ganIndex = ganZhiIndex % 10;
+  const zhiIndex = ganZhiIndex % 12;
 
   return { gan: TIAN_GAN[ganIndex], zhi: DI_ZHI[zhiIndex] };
 }
 
-// 时柱
+// ===== 时柱 =====
 function getHourPillar(dayGan: string, hour: number) {
-  // 时辰索引（子时=0）
   const shiChenIndex = Math.floor(((hour + 1) % 24) / 2);
-  // 时干 = (日干序号 * 2 + 时辰序号) % 10
   const dayGanIndex = TIAN_GAN.indexOf(dayGan);
   const hourGanIndex = (dayGanIndex * 2 + shiChenIndex) % 10;
-
   return { gan: TIAN_GAN[hourGanIndex], zhi: DI_ZHI[shiChenIndex] };
 }
 
@@ -154,7 +214,7 @@ export interface BaZiResult {
 }
 
 export function calculateBaZi(year: number, month: number, day: number, hour: number): BaZiResult {
-  const yp = getYearPillar(year);
+  const yp = getYearPillar(year, month, day);
   const mp = getMonthPillar(year, month, day);
   const dp = getDayPillar(year, month, day);
   const hp = getHourPillar(dp.gan, hour);
@@ -168,18 +228,15 @@ export function calculateBaZi(year: number, month: number, day: number, hour: nu
   const wuxingCount: Record<string, number> = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 };
   [yp.gan, mp.gan, dp.gan, hp.gan].forEach(g => wuxingCount[GAN_WUXING[g]]++);
   [yp.zhi, mp.zhi, dp.zhi, hp.zhi].forEach(z => wuxingCount[ZHI_WUXING[z]]++);
-
-  // 藏干五行也计入
+  // 藏干也计入（权重0.5）
   [yp.zhi, mp.zhi, dp.zhi, hp.zhi].forEach(z => {
     ZHI_CANG_GAN[z].forEach(g => wuxingCount[GAN_WUXING[g]] += 0.5);
   });
 
-  // 五行分析
   const maxWuxing = Object.entries(wuxingCount).sort((a, b) => b[1] - a[1])[0][0];
   const minWuxing = Object.entries(wuxingCount).sort((a, b) => a[1] - b[1])[0][0];
   const wuxingAnalysis = `五行中${maxWuxing}最旺，${minWuxing}最弱。日主${dp.gan}属${GAN_WUXING[dp.gan]}，需综合分析旺衰。`;
 
-  // 十神
   const shiShen = {
     yearGan: getShiShen(dp.gan, yp.gan),
     yearZhi: getShiShen(dp.gan, ZHI_CANG_GAN[yp.zhi][0]),

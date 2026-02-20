@@ -1,25 +1,19 @@
 /**
- * 紫微斗数核心库（简化版）
- * 命宫、身宫、十二宫排盘
+ * 紫微斗数核心库（修正版）
+ * 修正：命宫计算（从寅逆数月、顺数时）、宫干计算
  */
 
 const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
-// 十二宫名称
-export const GONG_NAMES = ['命宫', '兄弟宫', '夫妻宫', '子女宫', '财帛宫', '疾厄宫', 
+export const GONG_NAMES = ['命宫', '兄弟宫', '夫妻宫', '子女宫', '财帛宫', '疾厄宫',
                            '迁移宫', '仆役宫', '官禄宫', '田宅宫', '福德宫', '父母宫'];
 
-// 主星
 export const ZHU_XING = ['紫微', '天机', '太阳', '武曲', '天同', '廉贞',
                           '天府', '太阴', '贪狼', '巨门', '天相', '天梁', '七杀', '破军'];
 
-// 辅星
-export const FU_XING = ['左辅', '右弼', '文昌', '文曲', '天魁', '天钺',
-                         '禄存', '天马', '火星', '铃星', '擎羊', '陀罗'];
-
-// 五行局
-const WU_XING_JU: Record<string, { name: string; num: number }> = {
+// 五行局查表（命宫干支 → 五行局）
+const WU_XING_JU_MAP: Record<string, { name: string; num: number }> = {
   '甲子': { name: '水二局', num: 2 }, '乙丑': { name: '水二局', num: 2 },
   '丙寅': { name: '火六局', num: 6 }, '丁卯': { name: '火六局', num: 6 },
   '戊辰': { name: '木三局', num: 3 }, '己巳': { name: '木三局', num: 3 },
@@ -42,116 +36,131 @@ const WU_XING_JU: Record<string, { name: string; num: number }> = {
   '壬寅': { name: '金四局', num: 4 }, '癸卯': { name: '金四局', num: 4 },
 };
 
-// 紫微星系安星（简化）
-function getZiweiPos(lunarDay: number, juNum: number): number {
-  // 简化的紫微定位：(日数 / 局数) 取商+余数定位
-  const quotient = Math.ceil(lunarDay / juNum);
-  return (quotient + 1) % 12;
+/**
+ * 命宫计算（标准算法）
+ * 从寅宫起正月，逆数到生月，再从该宫起子时，顺数到生时
+ */
+function getMingGong(lunarMonth: number, shiChenIndex: number): number {
+  // 寅(2)起正月，逆数到生月
+  const monthPos = (2 - (lunarMonth - 1) + 12) % 12;
+  // 从月宫位置起子时，顺数到生时
+  const mingPos = (monthPos + shiChenIndex) % 12;
+  return mingPos;
 }
 
-// 天府星位置（与紫微对称）
+/**
+ * 身宫计算
+ * 从寅宫起正月，顺数到生月，再从该宫起子时，逆数到生时
+ */
+function getShenGong(lunarMonth: number, shiChenIndex: number): number {
+  const monthPos = (2 + (lunarMonth - 1)) % 12;
+  const shenPos = (monthPos - shiChenIndex + 12) % 12;
+  return shenPos;
+}
+
+/**
+ * 宫干计算（五虎遁）
+ * 根据年干确定寅宫天干，然后顺排
+ */
+function getGongTianGan(yearGan: string): Record<number, string> {
+  const ganIndex = TIAN_GAN.indexOf(yearGan);
+  // 五虎遁：甲己→丙寅，乙庚→戊寅，丙辛→庚寅，丁壬→壬寅，戊癸→甲寅
+  const yinGanStart = [2, 4, 6, 8, 0][ganIndex % 5];
+
+  const result: Record<number, string> = {};
+  for (let i = 0; i < 12; i++) {
+    // i是地支索引(0=子,1=丑,2=寅...)
+    // 寅宫(i=2)天干 = yinGanStart
+    const ganOffset = (i - 2 + 12) % 12;
+    result[i] = TIAN_GAN[(yinGanStart + ganOffset) % 10];
+  }
+  return result;
+}
+
+/**
+ * 紫微星定位
+ */
+function getZiweiPos(lunarDay: number, juNum: number): number {
+  // 紫微星位置查表法（简化）
+  const quotient = Math.ceil(lunarDay / juNum);
+  const remainder = lunarDay % juNum;
+
+  let pos: number;
+  if (remainder === 0) {
+    pos = quotient + 1;
+  } else {
+    // 奇数余数顺行，偶数余数逆行
+    if (remainder % 2 === 1) {
+      pos = quotient + 1 + Math.ceil(remainder / 2);
+    } else {
+      pos = quotient + 1 - (remainder / 2);
+    }
+  }
+  return ((pos % 12) + 12) % 12;
+}
+
 function getTianfuPos(ziweiPos: number): number {
   return (12 - ziweiPos + 4) % 12;
 }
 
 export interface GongInfo {
-  name: string;        // 宫名
-  diZhi: string;       // 地支
-  tianGan: string;     // 天干
-  stars: string[];     // 主星
-  fuStars: string[];   // 辅星
-  siHua: string[];     // 四化
+  name: string;
+  diZhi: string;
+  tianGan: string;
+  zhiIndex: number;
+  stars: string[];
+  fuStars: string[];
+  siHua: string[];
 }
 
 export interface ZiWeiResult {
-  mingGong: number;      // 命宫位置（地支索引）
-  shenGong: number;      // 身宫位置
-  wuxingJu: string;      // 五行局
-  juNum: number;          // 局数
-  gongs: GongInfo[];     // 十二宫信息
-  gender: string;        // 性别
-  yinYang: string;       // 阴阳年
+  mingGong: number;
+  shenGong: number;
+  wuxingJu: string;
+  juNum: number;
+  gongs: GongInfo[];
+  gender: string;
+  yinYang: string;
 }
 
-/**
- * 计算命宫位置
- * 命宫 = 寅宫起正月，逆数到生月，再从该宫起子时，顺数到生时
- */
-function getMingGong(lunarMonth: number, shiChenIndex: number): number {
-  // 从寅宫(索引2)开始逆数月份
-  const monthPos = (2 + (lunarMonth - 1) + 12) % 12;
-  // 从月宫位置起子时，逆数到生时
-  const mingPos = (monthPos - shiChenIndex + 12) % 12;
-  return mingPos;
-}
-
-/**
- * 计算身宫位置
- * 身宫 = 寅宫起正月，顺数到生月，再从该宫起子时，顺数到生时
- */
-function getShenGong(lunarMonth: number, shiChenIndex: number): number {
-  const monthPos = (2 + (lunarMonth - 1)) % 12;
-  const shenPos = (monthPos + shiChenIndex) % 12;
-  return shenPos;
-}
-
-/**
- * 起宫干（根据年干定寅宫天干）
- */
-function getGongTianGan(yearGan: string): string[] {
-  const ganIndex = TIAN_GAN.indexOf(yearGan);
-  // 五虎遁：甲己起丙寅，乙庚起戊寅，丙辛起庚寅，丁壬起壬寅，戊癸起甲寅
-  const yinGanStart = [2, 4, 6, 8, 0][Math.floor(ganIndex / 2)];
-  
-  const gongGan: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    gongGan.push(TIAN_GAN[(yinGanStart + i) % 10]);
-  }
-  return gongGan;
-}
-
-/**
- * 简化版紫微斗数排盘
- */
 export function calculateZiWei(
-  year: number, lunarMonth: number, lunarDay: number, 
+  year: number, lunarMonth: number, lunarDay: number,
   hour: number, gender: '男' | '女'
 ): ZiWeiResult {
   const shiChenIndex = Math.floor(((hour + 1) % 24) / 2);
-  
-  // 计算年柱
+
+  // 年柱
   const offset = (year - 4) % 60;
   const ganIndex = ((offset % 10) + 10) % 10;
-  const zhiIndex = ((offset % 12) + 12) % 12;
   const yearGan = TIAN_GAN[ganIndex];
-  const yearZhi = DI_ZHI[zhiIndex];
   const yinYang = ganIndex % 2 === 0 ? '阳' : '阴';
-  
+
   // 命宫和身宫
   const mingGong = getMingGong(lunarMonth, shiChenIndex);
   const shenGong = getShenGong(lunarMonth, shiChenIndex);
-  
+
+  // 宫干（按地支索引）
+  const gongGanMap = getGongTianGan(yearGan);
+
   // 五行局
-  const gongGan = getGongTianGan(yearGan);
-  const mingGanZhi = gongGan[mingGong] + DI_ZHI[mingGong];
-  const ju = WU_XING_JU[mingGanZhi] || { name: '水二局', num: 2 };
-  
-  // 紫微星定位
+  const mingGanZhi = gongGanMap[mingGong] + DI_ZHI[mingGong];
+  const ju = WU_XING_JU_MAP[mingGanZhi] || { name: '水二局', num: 2 };
+
+  // 紫微星系定位
   const ziweiPos = getZiweiPos(lunarDay, ju.num);
   const tianfuPos = getTianfuPos(ziweiPos);
-  
-  // 紫微星系安星（简化：只排主要星曜）
+
   const starPositions: Record<string, number> = {};
-  
-  // 紫微星系（紫微、天机、太阳、武曲、天同、廉贞）
+
+  // 紫微星系
   starPositions['紫微'] = ziweiPos;
   starPositions['天机'] = (ziweiPos - 1 + 12) % 12;
   starPositions['太阳'] = (ziweiPos - 3 + 12) % 12;
   starPositions['武曲'] = (ziweiPos - 4 + 12) % 12;
   starPositions['天同'] = (ziweiPos - 5 + 12) % 12;
   starPositions['廉贞'] = (ziweiPos - 8 + 12) % 12;
-  
-  // 天府星系（天府、太阴、贪狼、巨门、天相、天梁、七杀、破军）
+
+  // 天府星系
   starPositions['天府'] = tianfuPos;
   starPositions['太阴'] = (tianfuPos + 1) % 12;
   starPositions['贪狼'] = (tianfuPos + 2) % 12;
@@ -160,8 +169,8 @@ export function calculateZiWei(
   starPositions['天梁'] = (tianfuPos + 5) % 12;
   starPositions['七杀'] = (tianfuPos + 6) % 12;
   starPositions['破军'] = (tianfuPos + 10) % 12;
-  
-  // 辅星安星（简化）
+
+  // 辅星
   const fuStarPositions: Record<string, number> = {};
   fuStarPositions['左辅'] = (lunarMonth + 3) % 12;
   fuStarPositions['右弼'] = (11 - lunarMonth + 12) % 12;
@@ -170,7 +179,7 @@ export function calculateZiWei(
   fuStarPositions['禄存'] = [2, 3, 5, 6, 5, 6, 8, 9, 11, 0][ganIndex];
   fuStarPositions['擎羊'] = (fuStarPositions['禄存'] + 1) % 12;
   fuStarPositions['陀罗'] = (fuStarPositions['禄存'] - 1 + 12) % 12;
-  
+
   // 四化
   const siHuaTable: Record<string, string[]> = {
     '甲': ['廉贞化禄', '破军化权', '武曲化科', '太阳化忌'],
@@ -185,43 +194,42 @@ export function calculateZiWei(
     '癸': ['破军化禄', '巨门化权', '太阴化科', '贪狼化忌'],
   };
   const siHua = siHuaTable[yearGan] || [];
-  
+
   // 组装十二宫
   const gongs: GongInfo[] = [];
   for (let i = 0; i < 12; i++) {
-    const gongPos = (mingGong + i) % 12;
+    // 命宫位置开始，逆时针排列宫位
+    const gongPos = (mingGong - i + 12) % 12;
     const stars: string[] = [];
     const fuStars: string[] = [];
     const gongSiHua: string[] = [];
-    
-    // 查找主星
+
     Object.entries(starPositions).forEach(([star, pos]) => {
       if (pos === gongPos) stars.push(star);
     });
-    
-    // 查找辅星
+
     Object.entries(fuStarPositions).forEach(([star, pos]) => {
       if (pos === gongPos) fuStars.push(star);
     });
-    
-    // 查找四化
+
     siHua.forEach(sh => {
       const starName = sh.replace(/化[禄权科忌]/, '');
       if (starPositions[starName] === gongPos || fuStarPositions[starName] === gongPos) {
-        gongSiHua.push(sh.slice(-2)); // 化禄/化权/化科/化忌
+        gongSiHua.push(sh.slice(-2));
       }
     });
-    
+
     gongs.push({
       name: GONG_NAMES[i],
       diZhi: DI_ZHI[gongPos],
-      tianGan: gongGan[gongPos],
+      tianGan: gongGanMap[gongPos],
+      zhiIndex: gongPos,
       stars,
       fuStars,
       siHua: gongSiHua,
     });
   }
-  
+
   return {
     mingGong,
     shenGong,
