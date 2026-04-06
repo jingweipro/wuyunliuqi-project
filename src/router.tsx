@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import Sponsor from "./pages/Sponsor";
 import BaZi from "./pages/BaZi";
 import ZiWei from "./pages/ZiWei";
+import LiYangBo from "./pages/LiYangBo";
 
 export const routers = [
     {
@@ -60,6 +61,11 @@ export const routers = [
       path: "/ziwei",
       name: 'ziwei',
       element: <ZiWei />,
+    },
+    {
+      path: "/liyangbo",
+      name: 'liyangbo',
+      element: <LiYangBo />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {

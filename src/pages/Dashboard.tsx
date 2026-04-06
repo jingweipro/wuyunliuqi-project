@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getYearInfo, getCurrentQi, WU_XING_ATTRIBUTES, LIU_QI_ATTRIBUTES } from '@/lib/wuyun-liuqi';
@@ -25,21 +25,15 @@ import {
   Wind,
   BookMarked,
   Heart,
-  Shield
+  Shield,
+  Sparkles
 } from 'lucide-react';
 import WuYunChart from '@/components/WuYunChart';
 import LiuQiChart from '@/components/LiuQiChart';
 import KeZhuJiaLinCard from '@/components/KeZhuJiaLinCard';
 import KnowledgeSection from '@/components/KnowledgeSection';
 import LunarDatePicker from '@/components/LunarDatePicker';
-
-// 省份列表
-const PROVINCES = [
-  '北京', '上海', '天津', '重庆', '河北', '山西', '辽宁', '吉林', '黑龙江',
-  '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南',
-  '广东', '海南', '四川', '贵州', '云南', '陕西', '甘肃', '青海', '台湾',
-  '内蒙古', '广西', '西藏', '宁夏', '新疆', '香港', '澳门',
-];
+import { CHINA_REGIONS, getCitiesByProvince, getDistrictsByCity } from '@/lib/china-regions';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -259,37 +253,53 @@ export default function Dashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>所在地区（省份）</Label>
-                    <Select value={editRegion} onValueChange={setEditRegion}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择省份" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {PROVINCES.map((province) => (
-                          <SelectItem key={province} value={province}>
-                            {province}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <Label>所在地区</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Select value={editRegion} onValueChange={(v) => {
+                        setEditRegion(v);
+                        setEditCity('');
+                        setEditDistrict('');
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="省份" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {CHINA_REGIONS.map((p) => (
+                            <SelectItem key={p.name} value={p.name}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>城市</Label>
-                      <Input
-                        value={editCity}
-                        onChange={(e) => setEditCity(e.target.value)}
-                        placeholder="如：杭州市"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>区/县</Label>
-                      <Input
-                        value={editDistrict}
-                        onChange={(e) => setEditDistrict(e.target.value)}
-                        placeholder="如：西湖区"
-                      />
+                      <Select value={editCity} onValueChange={(v) => {
+                        setEditCity(v);
+                        setEditDistrict('');
+                      }} disabled={!editRegion}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="城市" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {getCitiesByProvince(editRegion).map((c) => (
+                            <SelectItem key={c.name} value={c.name}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={editDistrict} onValueChange={setEditDistrict} disabled={!editCity}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="区/县" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {getDistrictsByCity(editRegion, editCity).map((d) => (
+                            <SelectItem key={d} value={d}>
+                              {d}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -648,6 +658,29 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-purple-600 transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 李阳波学说入口 */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow group border-teal-300/50 bg-gradient-to-r from-teal-50/50 to-transparent"
+              onClick={() => navigate('/liyangbo')}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-teal-700 transition-colors">
+                      李阳波学说
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      开阖枢理论、三阴三阳气化、六经时间方位、伤寒论辨证体系
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-teal-600 transition-colors" />
                 </div>
               </CardContent>
             </Card>
